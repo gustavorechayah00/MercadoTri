@@ -28,9 +28,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onClick, show
   return (
     <div 
       onClick={onClick}
-      className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition cursor-pointer flex flex-col h-full group"
+      className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition cursor-pointer flex flex-col h-full group"
     >
-      <div className="relative aspect-square w-full bg-gray-200 overflow-hidden">
+      <div className="relative aspect-square w-full bg-gray-100 overflow-hidden">
         <img 
           src={images[currentImageIndex]} 
           alt={product.title} 
@@ -42,59 +42,59 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onClick, show
           <>
             <button 
               onClick={handlePrev} 
-              className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white text-gray-800 w-8 h-8 rounded-full shadow-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10"
+              className="absolute left-1 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white text-gray-800 w-6 h-6 rounded-full shadow-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10"
             >
-              <i className="fa-solid fa-chevron-left text-xs"></i>
+              <i className="fa-solid fa-chevron-left text-[10px]"></i>
             </button>
             <button 
               onClick={handleNext} 
-              className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white text-gray-800 w-8 h-8 rounded-full shadow-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10"
+              className="absolute right-1 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white text-gray-800 w-6 h-6 rounded-full shadow-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10"
             >
-              <i className="fa-solid fa-chevron-right text-xs"></i>
+              <i className="fa-solid fa-chevron-right text-[10px]"></i>
             </button>
             
             {/* Dots Indicator */}
-            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex space-x-1.5 z-10">
+            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex space-x-1 z-10">
                {images.slice(0, 5).map((_, idx) => (
                  <div 
                    key={idx} 
-                   className={`w-1.5 h-1.5 rounded-full shadow-sm transition-colors ${idx === currentImageIndex ? 'bg-white' : 'bg-white/50'}`} 
+                   className={`w-1 h-1 rounded-full shadow-sm transition-colors ${idx === currentImageIndex ? 'bg-white' : 'bg-white/60'}`} 
                  />
                ))}
-               {images.length > 5 && <div className="w-1.5 h-1.5 rounded-full bg-white/50"></div>}
             </div>
           </>
         )}
 
+        {/* Compact Category Badge */}
         <div className="absolute top-2 right-2 z-10">
-           <span className="bg-white/90 backdrop-blur-sm text-gray-800 text-xs font-bold px-2 py-1 rounded-md shadow-sm border border-gray-100">
+           <span className="bg-white/95 backdrop-blur-sm text-gray-800 text-[10px] font-bold px-1.5 py-0.5 rounded shadow-sm border border-gray-100 uppercase tracking-tight">
              {product.category}
            </span>
         </div>
 
         {showStatus && (
-           <div className={`absolute top-2 left-2 px-2 py-1 rounded-md text-xs font-bold text-white shadow-sm z-10 ${product.status === 'published' ? 'bg-green-500' : 'bg-yellow-500'}`}>
+           <div className={`absolute top-2 left-2 px-1.5 py-0.5 rounded text-[10px] font-bold text-white shadow-sm z-10 ${product.status === 'published' ? 'bg-green-500' : 'bg-yellow-500'}`}>
              {product.status === 'published' ? 'Active' : 'Draft'}
            </div>
         )}
       </div>
 
-      <div className="p-4 flex flex-col flex-grow">
-        <div className="flex justify-between items-start mb-2">
-          <h3 className="font-semibold text-gray-900 line-clamp-2 leading-snug">{product.title}</h3>
+      <div className="p-3 flex flex-col flex-grow">
+        <div className="mb-1">
+          <h3 className="font-medium text-gray-900 line-clamp-2 text-sm leading-tight h-9">{product.title}</h3>
         </div>
         
-        <div className="flex items-center text-xs text-gray-500 mb-3 space-x-2">
-           <span className="bg-gray-100 px-2 py-0.5 rounded text-gray-700 font-medium">{product.condition}</span>
+        <div className="flex items-center text-[10px] text-gray-500 mb-2 space-x-1">
+           <span className="bg-gray-50 px-1.5 py-0.5 rounded text-gray-600 font-medium border border-gray-100 truncate max-w-[80px]">{product.brand}</span>
            <span>•</span>
-           <span>{product.brand}</span>
+           <span className="truncate">{product.condition}</span>
         </div>
 
-        <div className="mt-auto flex justify-between items-center">
-          <span className="text-lg font-bold text-tri-dark">
+        <div className="mt-auto flex justify-between items-end border-t border-gray-50 pt-2">
+          <span className="text-base font-bold text-gray-900 tracking-tight">
             ${product.price.toLocaleString()}
           </span>
-          <span className="text-xs text-gray-400">
+          <span className="text-[10px] text-gray-400">
              {new Date(product.createdAt).toLocaleDateString()}
           </span>
         </div>

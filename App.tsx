@@ -1355,32 +1355,23 @@ const App: React.FC = () => {
       });
   };
 
-  // Helper to render products grouped by category
-  const renderCategorySection = (cat: string) => {
-      const catProducts = filteredMarketplaceProducts.filter(p => p.category === cat);
-      if (catProducts.length === 0) return null;
+  // Sort products by Category to ensure continuous flow
+  const getSortedMarketplaceProducts = () => {
+    const categoryOrder: Record<string, number> = {
+        [Category.TRIATHLON]: 1,
+        [Category.CYCLING]: 2,
+        [Category.RUNNING]: 3,
+        [Category.SWIMMING]: 4,
+        [Category.OTHER]: 5
+    };
 
-      const config = CATEGORY_CONFIG[cat];
-      
-      return (
-          <div key={cat} className="mb-12 last:mb-0">
-              <div className="flex items-center space-x-3 mb-6 border-b border-gray-100 pb-3">
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center shadow-sm ${config.bg} ${config.color}`}>
-                      <i className={`fa-solid ${config.icon} text-xl`}></i>
-                  </div>
-                  <div className="flex flex-col">
-                      <h3 className="text-2xl font-bold text-gray-900 uppercase tracking-wide font-sport leading-none">{getCategoryLabel(cat, t)}</h3>
-                      <span className="text-xs font-medium text-gray-400 font-sans">{catProducts.length} Productos</span>
-                  </div>
-              </div>
-              
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                  {catProducts.map(product => (
-                      <ProductCard key={product.id} product={product} onClick={() => handleProductClick(product)} />
-                  ))}
-              </div>
-          </div>
-      );
+    return [...filteredMarketplaceProducts].sort((a, b) => {
+        const catOrderA = categoryOrder[a.category] || 99;
+        const catOrderB = categoryOrder[b.category] || 99;
+        if (catOrderA !== catOrderB) return catOrderA - catOrderB;
+        // Secondary Sort: Newest First
+        return b.createdAt - a.createdAt;
+    });
   };
 
   const renderContent = () => {
@@ -1393,6 +1384,7 @@ const App: React.FC = () => {
       case 'config': return user?.role === 'admin' ? <ConfigView siteConfig={siteConfig} onUpdateConfig={setSiteConfig} t={t} /> : null;
       case 'profile': return user ? <ProfileView user={user} t={t} onUpdateUser={setUser} /> : null;
       case 'marketplace':
+        const sortedProducts = getSortedMarketplaceProducts();
         return (
           <div className="space-y-6">
             {/* Removed Hero Banner Section as requested */}
@@ -1442,7 +1434,7 @@ const App: React.FC = () => {
                     <p className="text-red-700 font-bold">{productsError}</p>
                     <button onClick={loadProducts} className="mt-4 px-4 py-2 bg-white border border-red-200 rounded-lg text-red-600 font-bold hover:bg-red-50 transition">Reintentar</button>
                 </div>
-            ) : filteredMarketplaceProducts.length === 0 ? (
+            ) : sortedProducts.length === 0 ? (
                 <div className="text-center py-20 bg-white rounded-xl border border-dashed border-gray-300">
                     <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                          <i className="fa-solid fa-magnifying-glass text-gray-400 text-2xl"></i>
@@ -1451,8 +1443,10 @@ const App: React.FC = () => {
                     <p className="text-gray-500">Intenta cambiar los filtros de búsqueda.</p>
                 </div>
             ) : (
-                <div className="space-y-8">
-                    {Object.values(Category).map(cat => renderCategorySection(cat as string))}
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4 lg:gap-5">
+                    {sortedProducts.map(product => (
+                        <ProductCard key={product.id} product={product} onClick={() => handleProductClick(product)} />
+                    ))}
                 </div>
             )}
           </div>
@@ -1496,7 +1490,7 @@ const App: React.FC = () => {
             </div>
             {/* List/Grid View Rendering */}
             {baseInventory.length === 0 ? <div className="text-center py-12 bg-white rounded-xl border border-dashed border-gray-300"><p className="text-gray-500 mb-4">{t.emptyInventory}</p><button onClick={() => setView('upload')} className="text-tri-orange font-bold">{t.startSelling}</button></div> : 
-             (inventoryViewMode === 'grid' ? <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">{processedInventory.map(p => <ProductCard key={p.id} product={p} onClick={() => handleProductClick(p)} showStatus />)}</div> : 
+             (inventoryViewMode === 'grid' ? <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">{processedInventory.map(p => <ProductCard key={p.id} product={p} onClick={() => handleProductClick(p)} showStatus />)}</div> : 
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden"><div className="overflow-x-auto"><table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50"><tr><th className="px-6 py-3 text-left"><input type="checkbox" className="rounded text-tri-orange cursor-pointer bg-white border-gray-300" checked={selectedInventoryItems.size === processedInventory.length && processedInventory.length > 0} onChange={() => selectAllInventoryItems(processedInventory)} /></th><th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">{t.titleLabel}</th><th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">{t.categoryLabel}</th><th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">{t.priceLabel}</th><th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th><th className="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th></tr></thead>
                 <tbody className="bg-white divide-y divide-gray-200">{processedInventory.map((p) => (<tr key={p.id} className="hover:bg-gray-50 transition"><td className="px-6 py-4"><input type="checkbox" className="rounded text-tri-orange cursor-pointer bg-white border-gray-300" checked={selectedInventoryItems.has(p.id)} onChange={() => toggleInventoryItemSelection(p.id)} /></td><td className="px-6 py-4"><div className="flex items-center"><div className="h-10 w-10 flex-shrink-0 rounded bg-gray-100 overflow-hidden mr-3 border border-gray-200"><img className="h-full w-full object-cover object-center" src={p.imageUrls[0]} alt="" /></div><div><div className="text-sm font-medium text-gray-900 cursor-pointer hover:text-tri-orange" onClick={() => handleProductClick(p)}>{p.title}</div><div className="text-xs text-gray-500">{p.brand}</div></div></div></td><td className="px-6 py-4"><span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">{getCategoryLabel(p.category, t)}</span></td><td className="px-6 py-4 text-sm text-gray-500 font-mono">${p.price.toLocaleString()}</td><td className="px-6 py-4"><span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${p.status === 'published' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>{p.status === 'published' ? 'Active' : 'Draft'}</span></td><td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium"><button onClick={() => handleEditProduct(p)} className="text-tri-blue hover:text-blue-900 mr-4"><i className="fa-solid fa-pen"></i></button><button onClick={(e) => handleDeleteProduct(p.id, e)} className="text-red-500 hover:text-red-700"><i className="fa-solid fa-trash"></i></button></td></tr>))}</tbody>
