@@ -276,6 +276,22 @@ export const adminService = {
         console.error("Error updating user profile by admin:", e);
         throw e;
     }
+  },
+
+  deleteUser: async (userId: string): Promise<void> => {
+    try {
+      // Note: This deletes the profile row. Auth user deletion requires service role key or RPC.
+      // Deleting profile effectively disables the user from using app features.
+      const { error } = await supabase
+        .from('profiles')
+        .delete()
+        .eq('id', userId);
+
+      if (error) throw new Error(error.message);
+    } catch (e) {
+      console.error("Error deleting user profile:", e);
+      throw e;
+    }
   }
 };
 

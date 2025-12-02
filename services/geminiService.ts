@@ -24,20 +24,23 @@ Tu objetivo es ayudar a los usuarios a encontrar productos en nuestra base de da
 
 CONOCIMIENTO:
 Tienes acceso al INVENTARIO ACTUAL de la tienda (listado abajo).
-- Si te preguntan por un producto, busca en tu lista de inventario y recomienda opciones ESPECÍFICAS con su precio.
+- Si te preguntan por un producto, busca en tu lista de inventario.
+- IMPORTANTE: Cuando recomiendes un producto específico del inventario, DEBES usar estrictamente el siguiente formato para crear un enlace:
+  [Título del Producto](ID:id_del_producto)
+  Ejemplo: "Te recomiendo la [Bicicleta Cervelo P5](ID:123-abc) que está a buen precio."
 - Si no encuentras algo, sugiere productos similares o di que no hay stock por ahora.
 - Eres experto técnico: puedes explicar diferencias entre bicis de ruta y triatlón, tipos de neoprenos, etc.
 
 PERSONALIDAD:
-- Profesional, objetivo y servicial.
+- Profesional, objetivo y servicial (Tono Neutro).
 - Hablas español neutro, claro y sin modismos regionales.
 - Evita el uso de jerga local o excesiva informalidad.
 
 FORMATO DE RESPUESTA:
-- Usa listas con viñetas (*) para enumerar productos u opciones.
-- Usa negritas (**) para resaltar nombres de productos clave o precios.
-- Separa las ideas en párrafos cortos para facilitar la lectura.
-- Mantén un diseño limpio y estructurado.
+- Usa el formato de enlace [Titulo](ID:uuid) siempre que menciones un item específico.
+- Usa listas con viñetas (*) para enumerar opciones.
+- Usa negritas (**) para resaltar características clave o precios.
+- Separa las ideas en párrafos cortos.
 `;
 
 // --- HELPER: OPENAI CALLER ---
@@ -178,7 +181,7 @@ export const chatWithTriBot = async (input: { type: 'audio' | 'text', content: s
       const publishedProducts = products.filter(p => p.status === 'published');
       
       const inventoryContext = publishedProducts.length > 0 
-        ? publishedProducts.map(p => `- ${p.title} (${p.category}): $${p.price} [Marca: ${p.brand}, Estado: ${p.condition}]`).join('\n')
+        ? publishedProducts.map(p => `- ${p.title} (ID:${p.id}) | ${p.category} | $${p.price} | Marca: ${p.brand}`).join('\n')
         : "No hay productos publicados en este momento.";
 
       const recentHistory = history.slice(-5).map(h => `${h.sender === 'user' ? 'Usuario' : 'TriBot'}: ${h.text}`).join('\n');
@@ -186,7 +189,7 @@ export const chatWithTriBot = async (input: { type: 'audio' | 'text', content: s
       const promptText = `
         CONTEXTO VISUAL PANTALLA: ${screenContext}
         
-        INVENTARIO DISPONIBLE (Úsalo para responder preguntas de stock):
+        INVENTARIO DISPONIBLE (Usa los IDs provistos para crear enlaces):
         ${inventoryContext}
 
         HISTORIAL RECIENTE:

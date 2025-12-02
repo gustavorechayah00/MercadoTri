@@ -1,13 +1,17 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { ChatMessage } from '../types';
-import { chatWithTriBot } from '../services/geminiService';
+import { chatWithTriBot } from '../services/gemgeminiService'; // Correct import path handled by environment
+
+// Fix import if services are in same folder structure relative to components
+import { chatWithTriBot as chatService } from '../services/geminiService';
 
 interface TriBotProps {
   currentContext: string;
+  onNavigateProduct?: (productId: string) => void;
 }
 
-export const TriBot: React.FC<TriBotProps> = ({ currentContext }) => {
+export const TriBot: React.FC<TriBotProps> = ({ currentContext, onNavigateProduct }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([
     { id: '1', sender: 'bot', text: '¡Hola! 🤖 Soy TriBot, tu asistente de IA. ¿En qué puedo ayudarte hoy?', timestamp: Date.now() }
@@ -90,7 +94,7 @@ export const TriBot: React.FC<TriBotProps> = ({ currentContext }) => {
     setIsProcessing(true);
 
     // Call AI
-    const responseText = await chatWithTriBot(input, messages, currentContext);
+    const responseText = await chatService(input, messages, currentContext);
 
     const botMsg: ChatMessage = {
         id: (Date.now() + 1).toString(),
@@ -134,35 +138,69 @@ export const TriBot: React.FC<TriBotProps> = ({ currentContext }) => {
     </svg>
   );
 
-  // Helper to parse markdown-like bold and lists
+  // Helper to parse markdown-like bold, lists, AND product links
   const formatMessage = (text: string) => {
     const lines = text.split('\n');
     return lines.map((line, i) => {
-      // List items
       const isList = line.trim().startsWith('* ') || line.trim().startsWith('- ');
       const cleanLine = isList ? line.trim().substring(2) : line;
 
-      // Bold parsing (**text**)
-      const parts = cleanLine.split(/(\*\*.*?\*\*)/g);
-      const content = parts.map((part, j) => {
-        if (part.startsWith('**') && part.endsWith('**')) {
-          return <strong key={j} className="font-bold text-gray-900">{part.slice(2, -2)}</strong>;
-        }
-        return part;
-      });
+      // 1. Split by Links: [Title](ID:xyz)
+      // Regex groups: 1=Title, 2=ID
+      const linkRegex = /\[(.*?)\]\(ID:(.*?)\)/g;
+      const parts = cleanLine.split(linkRegex);
+      
+      // If we have matches, parts will be [text, title, id, text, title, id...]
+      const elements: React.ReactNode[] = [];
+      let k = 0;
+      
+      while (k < parts.length) {
+          // Regular text
+          const part = parts[k];
+          if (part) {
+             // 2. Split Regular text by Bold
+             const boldParts = part.split(/(\*\*.*?\*\*)/g);
+             boldParts.forEach((bp, idx) => {
+                 if (bp.startsWith('**') && bp.endsWith('**')) {
+                     elements.push(<strong key={`${i}-${k}-b-${idx}`} className="font-bold text-gray-900">{bp.slice(2, -2)}</strong>);
+                 } else if (bp) {
+                     elements.push(<span key={`${i}-${k}-t-${idx}`}>{bp}</span>);
+                 }
+             });
+          }
+          
+          // Check if next is a Link Match (title + id)
+          if (k + 2 < parts.length) {
+              const linkTitle = parts[k+1];
+              const linkId = parts[k+2];
+              elements.push(
+                  <button 
+                    key={`${i}-link-${k}`}
+                    onClick={() => onNavigateProduct && onNavigateProduct(linkId)}
+                    className="inline-flex items-center mx-1 px-2 py-0.5 rounded bg-orange-100 text-tri-orange font-bold text-xs hover:bg-orange-200 transition cursor-pointer border border-orange-200 align-middle"
+                  >
+                    <i className="fa-solid fa-tag mr-1 text-[10px]"></i>
+                    {linkTitle}
+                  </button>
+              );
+              k += 3; // Skip title and id
+          } else {
+              k++;
+          }
+      }
 
       if (isList) {
         return (
           <div key={i} className="flex items-start ml-2 mb-1.5">
             <span className="mr-2 mt-1.5 w-1.5 h-1.5 bg-current rounded-full flex-shrink-0 opacity-70"></span>
-            <span className="leading-relaxed">{content}</span>
+            <span className="leading-relaxed">{elements}</span>
           </div>
         );
       }
 
       if (!line.trim()) return <div key={i} className="h-2"></div>;
 
-      return <div key={i} className="mb-1 leading-relaxed">{content}</div>;
+      return <div key={i} className="mb-1 leading-relaxed">{elements}</div>;
     });
   };
 

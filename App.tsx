@@ -1035,6 +1035,17 @@ const UserManagementView = ({ t, currentUser }: { t: any, currentUser: User | nu
       }
   };
 
+  const handleDeleteUser = async (userId: string) => {
+      if (!window.confirm("¿Estás seguro de eliminar este usuario? Esta acción es irreversible.")) return;
+      try {
+          await adminService.deleteUser(userId);
+          setUsers(prev => prev.filter(u => u.id !== userId));
+      } catch (e) {
+          console.error(e);
+          alert("Error al eliminar usuario. Verifica permisos.");
+      }
+  };
+
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
@@ -1107,6 +1118,9 @@ const UserManagementView = ({ t, currentUser }: { t: any, currentUser: User | nu
                         </select>
                         <button onClick={() => handleEditUser(u)} className="text-gray-400 hover:text-tri-orange transition">
                             <i className="fa-solid fa-pen-to-square"></i>
+                        </button>
+                        <button onClick={() => handleDeleteUser(u.id)} className="text-gray-400 hover:text-red-600 transition" disabled={u.id === currentUser?.id}>
+                            <i className="fa-solid fa-trash"></i>
                         </button>
                     </td>
                   </tr>
@@ -1361,6 +1375,16 @@ const App: React.FC = () => {
     setSelectedProduct(product); setView('product-detail');
   };
 
+  const handleNavigateProductById = (id: string) => {
+      const prod = products.find(p => p.id === id);
+      if (prod) {
+          handleProductClick(prod);
+      } else {
+          // If not loaded or doesn't exist, try to find it (rare case if inventory is fresh)
+          console.warn("Product ID not found in current list", id);
+      }
+  }
+
   const getScreenContext = () => {
     const roleStr = user ? user.role : 'visitante';
     switch (view) {
@@ -1540,7 +1564,7 @@ const App: React.FC = () => {
   return (
     <Layout user={user} activePage={view} onNavigate={setView} onLogout={handleLogout} language={language} onToggleLanguage={() => setLanguage(prev => prev === 'es' ? 'en' : 'es')} t={t} siteConfig={siteConfig}>
       {renderContent()}
-      <TriBot currentContext={getScreenContext()} />
+      <TriBot currentContext={getScreenContext()} onNavigateProduct={handleNavigateProductById} />
     </Layout>
   );
 };
