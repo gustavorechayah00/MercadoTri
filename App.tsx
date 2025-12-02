@@ -866,6 +866,7 @@ const EditView = ({ initialData, images: initialImages, onSave, onCancel, t, isE
 
 const ProductDetailView = ({ product, onBack, t, user, onEdit, onDelete }: any) => {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const canEdit = user && (user.role === 'admin' || (user.role === 'seller' && user.id === product.userId));
 
   const nextImage = (e?: React.MouseEvent) => {
@@ -897,22 +898,26 @@ const ProductDetailView = ({ product, onBack, t, user, onEdit, onDelete }: any) 
       </div>
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col md:flex-row">
         <div className="w-full md:w-1/2 bg-gray-50 flex flex-col">
-          <div className="relative aspect-square w-full bg-white overflow-hidden group">
+          {/* Main Image Container */}
+          <div 
+            className="relative aspect-square w-full bg-white overflow-hidden group cursor-zoom-in"
+            onClick={() => setIsLightboxOpen(true)}
+          >
             <img src={product.imageUrls[activeImageIndex]} alt={product.title} className="w-full h-full object-cover object-center transition duration-500" />
             
             {/* Navigation Arrows for Main Image */}
             {product.imageUrls.length > 1 && (
               <>
-                 <button onClick={prevImage} className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white text-gray-800 w-10 h-10 rounded-full shadow-md flex items-center justify-center opacity-0 group-hover:opacity-100 transition duration-200">
+                 <button onClick={prevImage} className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white text-gray-800 w-10 h-10 rounded-full shadow-md flex items-center justify-center opacity-0 group-hover:opacity-100 transition duration-200 z-10">
                     <i className="fa-solid fa-chevron-left"></i>
                  </button>
-                 <button onClick={nextImage} className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white text-gray-800 w-10 h-10 rounded-full shadow-md flex items-center justify-center opacity-0 group-hover:opacity-100 transition duration-200">
+                 <button onClick={nextImage} className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white text-gray-800 w-10 h-10 rounded-full shadow-md flex items-center justify-center opacity-0 group-hover:opacity-100 transition duration-200 z-10">
                     <i className="fa-solid fa-chevron-right"></i>
                  </button>
               </>
             )}
 
-            <div className={`absolute top-4 left-4 px-3 py-1 rounded-full text-xs font-bold text-white shadow-sm ${product.status === 'published' ? 'bg-green-500' : 'bg-yellow-500'}`}>
+            <div className={`absolute top-4 left-4 px-3 py-1 rounded-full text-xs font-bold text-white shadow-sm z-10 ${product.status === 'published' ? 'bg-green-500' : 'bg-yellow-500'}`}>
                {product.status === 'published' ? t.available : t.draft}
              </div>
           </div>
@@ -950,6 +955,36 @@ const ProductDetailView = ({ product, onBack, t, user, onEdit, onDelete }: any) 
           </div>
         </div>
       </div>
+
+      {/* Lightbox Modal */}
+      {isLightboxOpen && (
+        <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in" onClick={() => setIsLightboxOpen(false)}>
+           <button onClick={() => setIsLightboxOpen(false)} className="absolute top-6 right-6 text-white text-3xl hover:text-gray-300 z-[101]">
+             <i className="fa-solid fa-xmark"></i>
+           </button>
+           
+           <div className="relative max-w-full max-h-full flex items-center justify-center">
+             <img 
+               src={product.imageUrls[activeImageIndex]} 
+               alt="Full Screen" 
+               className="max-w-full max-h-[90vh] object-contain shadow-2xl rounded-lg"
+               onClick={(e) => e.stopPropagation()} 
+             />
+
+             {/* Lightbox Arrows */}
+             {product.imageUrls.length > 1 && (
+               <>
+                 <button onClick={prevImage} className="absolute left-[-60px] top-1/2 -translate-y-1/2 text-white text-4xl hover:text-gray-300 p-4">
+                    <i className="fa-solid fa-chevron-left"></i>
+                 </button>
+                 <button onClick={nextImage} className="absolute right-[-60px] top-1/2 -translate-y-1/2 text-white text-4xl hover:text-gray-300 p-4">
+                    <i className="fa-solid fa-chevron-right"></i>
+                 </button>
+               </>
+             )}
+           </div>
+        </div>
+      )}
     </div>
   );
 };
