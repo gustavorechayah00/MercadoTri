@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Layout } from './components/Layout';
 import { ProductCard } from './components/ProductCard';
@@ -1354,6 +1355,34 @@ const App: React.FC = () => {
       });
   };
 
+  // Helper to render products grouped by category
+  const renderCategorySection = (cat: string) => {
+      const catProducts = filteredMarketplaceProducts.filter(p => p.category === cat);
+      if (catProducts.length === 0) return null;
+
+      const config = CATEGORY_CONFIG[cat];
+      
+      return (
+          <div key={cat} className="mb-12 last:mb-0">
+              <div className="flex items-center space-x-3 mb-6 border-b border-gray-100 pb-3">
+                  <div className={`w-12 h-12 rounded-full flex items-center justify-center shadow-sm ${config.bg} ${config.color}`}>
+                      <i className={`fa-solid ${config.icon} text-xl`}></i>
+                  </div>
+                  <div className="flex flex-col">
+                      <h3 className="text-2xl font-bold text-gray-900 uppercase tracking-wide font-sport leading-none">{getCategoryLabel(cat, t)}</h3>
+                      <span className="text-xs font-medium text-gray-400 font-sans">{catProducts.length} Productos</span>
+                  </div>
+              </div>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                  {catProducts.map(product => (
+                      <ProductCard key={product.id} product={product} onClick={() => handleProductClick(product)} />
+                  ))}
+              </div>
+          </div>
+      );
+  };
+
   const renderContent = () => {
     switch (view) {
       case 'login': return <LoginView onLoginSuccess={(u) => { setUser(u); setView('marketplace'); }} t={t} siteConfig={siteConfig} />;
@@ -1422,10 +1451,8 @@ const App: React.FC = () => {
                     <p className="text-gray-500">Intenta cambiar los filtros de búsqueda.</p>
                 </div>
             ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                    {filteredMarketplaceProducts.map(product => (
-                    <ProductCard key={product.id} product={product} onClick={() => handleProductClick(product)} />
-                    ))}
+                <div className="space-y-8">
+                    {Object.values(Category).map(cat => renderCategorySection(cat as string))}
                 </div>
             )}
           </div>
