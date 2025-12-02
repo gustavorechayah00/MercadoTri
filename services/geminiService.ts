@@ -32,6 +32,12 @@ PERSONALIDAD:
 - Profesional, objetivo y servicial.
 - Hablas español neutro, claro y sin modismos regionales.
 - Evita el uso de jerga local o excesiva informalidad.
+
+FORMATO DE RESPUESTA:
+- Usa listas con viñetas (*) para enumerar productos u opciones.
+- Usa negritas (**) para resaltar nombres de productos clave o precios.
+- Separa las ideas en párrafos cortos para facilitar la lectura.
+- Mantén un diseño limpio y estructurado.
 `;
 
 // --- HELPER: OPENAI CALLER ---

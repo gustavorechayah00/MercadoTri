@@ -134,6 +134,38 @@ export const TriBot: React.FC<TriBotProps> = ({ currentContext }) => {
     </svg>
   );
 
+  // Helper to parse markdown-like bold and lists
+  const formatMessage = (text: string) => {
+    const lines = text.split('\n');
+    return lines.map((line, i) => {
+      // List items
+      const isList = line.trim().startsWith('* ') || line.trim().startsWith('- ');
+      const cleanLine = isList ? line.trim().substring(2) : line;
+
+      // Bold parsing (**text**)
+      const parts = cleanLine.split(/(\*\*.*?\*\*)/g);
+      const content = parts.map((part, j) => {
+        if (part.startsWith('**') && part.endsWith('**')) {
+          return <strong key={j} className="font-bold text-gray-900">{part.slice(2, -2)}</strong>;
+        }
+        return part;
+      });
+
+      if (isList) {
+        return (
+          <div key={i} className="flex items-start ml-2 mb-1.5">
+            <span className="mr-2 mt-1.5 w-1.5 h-1.5 bg-current rounded-full flex-shrink-0 opacity-70"></span>
+            <span className="leading-relaxed">{content}</span>
+          </div>
+        );
+      }
+
+      if (!line.trim()) return <div key={i} className="h-2"></div>;
+
+      return <div key={i} className="mb-1 leading-relaxed">{content}</div>;
+    });
+  };
+
   return (
     <div className="fixed bottom-20 sm:bottom-6 right-6 z-50 flex flex-col items-end">
       {/* Chat Window */}
@@ -164,12 +196,12 @@ export const TriBot: React.FC<TriBotProps> = ({ currentContext }) => {
                         <div className="w-6 h-6"><TriBotIcon /></div>
                     </div>
                 )}
-                <div className={`max-w-[80%] rounded-2xl px-4 py-2 text-sm shadow-sm ${
+                <div className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm shadow-sm ${
                   msg.sender === 'user' 
                     ? 'bg-tri-blue text-white rounded-br-none' 
                     : 'bg-white text-gray-700 border border-gray-100 rounded-bl-none'
                 }`}>
-                  {msg.text}
+                  {msg.sender === 'user' ? msg.text : formatMessage(msg.text)}
                 </div>
               </div>
             ))}
