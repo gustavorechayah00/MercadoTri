@@ -66,6 +66,14 @@ const mapRowToUser = (row: any): User => ({
   avatarUrl: row.avatar_url || ''
 });
 
+// Default settings in case DB fetch fails
+const DEFAULT_SETTINGS: SiteSettings = {
+    siteName: 'Mercado Tri',
+    siteDescription: 'La plataforma líder para productos de triatlón.',
+    defaultLanguage: 'es',
+    aiProvider: 'gemini'
+};
+
 export const authService = {
   login: async (email: string, password: string): Promise<User> => {
     const { data, error } = await supabase.auth.signInWithPassword({
@@ -382,12 +390,17 @@ export const productService = {
         .order('created_at', { ascending: false });
 
       if (error) {
-        throw error;
+         // Gracefully handle missing table during setup
+         if (error.code === '42P01') { 
+             console.warn("Products table missing (42P01). Returning empty list.");
+             return [];
+         }
+         throw error;
       }
       return data ? data.map(mapRowToProduct) : [];
     } catch (e) {
-      console.error("Error fetching products:", e);
-      throw e; // Throw so UI can handle it
+      console.error("Error fetching products:", JSON.stringify(e));
+      return []; // Return empty instead of throwing to avoid UI crash
     }
   },
   
@@ -450,6 +463,7 @@ export const productService = {
     if (updates.brand) payload.brand = updates.brand;
     if (updates.condition) payload.condition = updates.condition;
     if (updates.price) payload.price = updates.price;
+    if (updates.currency) payload.currency = updates.currency;
     if (finalImageUrls) payload.image_urls = finalImageUrls;
     if (updates.status) payload.status = updates.status;
     if (updates.tags) payload.tags = updates.tags;
@@ -515,13 +529,18 @@ export const configService = {
       .eq('id', 1)
       .single();
     
-    if (error && error.code !== 'PGRST116') { // Ignore "no rows" error
-      console.error("Error fetching settings", error);
+    if (error) {
+        // Handle missing table or empty rows gracefully
+        if (error.code === '42P01' || error.code === 'PGRST116') {
+             return DEFAULT_SETTINGS;
+        }
+        console.error("Error fetching settings", JSON.stringify(error));
+        return DEFAULT_SETTINGS;
     }
     
     return {
-      siteName: data?.site_name || 'Mercado Tri',
-      siteDescription: data?.site_description || 'La plataforma líder para productos de triatlón.',
+      siteName: data?.site_name || DEFAULT_SETTINGS.siteName,
+      siteDescription: data?.site_description || DEFAULT_SETTINGS.siteDescription,
       logoUrl: data?.logo_url,
       defaultLanguage: data?.default_language || 'es',
       aiProvider: (data?.ai_provider as AIProvider) || 'gemini',

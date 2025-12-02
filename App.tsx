@@ -471,11 +471,12 @@ const LoginView = ({ onLoginSuccess, t, siteConfig, initialError }: { onLoginSuc
                         <p className="text-xs mt-1 opacity-90">{error}</p>
                         {isProfileError && (
                             <div className="mt-2 text-xs bg-white p-2 rounded border border-red-200">
-                                <strong>💡 Posible Solución GitHub:</strong><br/>
+                                <strong>💡 Solución para el Error de GitHub:</strong><br/>
                                 <ul className="list-disc pl-4 mt-1 space-y-1">
-                                    <li>Verifica que estás usando una <strong>OAuth App</strong> y no una <em>GitHub App</em>.</li>
-                                    <li>Si usas <em>GitHub App</em>, ve a <em>Permissions</em> &gt; <em>Email addresses</em> y ponlo en <strong>Read-only</strong>.</li>
-                                    <li>Intenta de nuevo, hemos forzado la solicitud de permisos.</li>
+                                    <li>Es probable que hayas configurado una <strong>GitHub App</strong> en lugar de una <strong>OAuth App</strong>.</li>
+                                    <li>En GitHub, ve a <em>Settings</em> &gt; <em>Developer Settings</em> &gt; <strong>OAuth Apps</strong> y crea una nueva.</li>
+                                    <li>Usa el <em>Client ID</em> y <em>Client Secret</em> de la OAuth App en Supabase.</li>
+                                    <li>Si usas <em>GitHub App</em>, debes configurar permisos de email como "Read-only" en "Permissions & events".</li>
                                 </ul>
                             </div>
                         )}
