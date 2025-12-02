@@ -51,7 +51,7 @@ const mapRowToProduct = (row: any): Product => ({
   price: row.price,
   currency: row.currency,
   imageUrls: row.image_urls || [],
-  status: (row.status || 'published') as 'draft' | 'published', // Default to published to ensure visibility
+  status: (row.status || 'published') as 'draft' | 'published' | 'sold',
   createdAt: new Date(row.created_at).getTime(),
   tags: row.tags || []
 });
@@ -63,7 +63,8 @@ const mapRowToUser = (row: any): User => ({
   name: row.name || row.email?.split('@')[0] || 'Usuario',
   whatsapp: row.whatsapp || '',
   phone: row.phone || '',
-  avatarUrl: row.avatar_url || ''
+  avatarUrl: row.avatar_url || '',
+  shopName: row.shop_name
 });
 
 // Default settings in case DB fetch fails
@@ -215,9 +216,8 @@ export const authService = {
       whatsapp: updates.whatsapp,
       phone: updates.phone,
     };
-    // Only update email/role if strictly necessary, usually handled by auth/admin
-    
     if (avatarUrl) payload.avatar_url = avatarUrl;
+    if (updates.shopName) payload.shop_name = updates.shopName;
 
     // Use UPSERT instead of UPDATE to handle cases where profile might be missing
     const { data, error } = await supabase
@@ -228,6 +228,22 @@ export const authService = {
 
     if (error) throw new Error(error.message);
     return mapRowToUser(data);
+  },
+  
+  createShop: async (userId: string, shopName: string): Promise<User> => {
+      // 1. Update Profile with shop name AND force role to seller if currently buyer
+      const { data, error } = await supabase
+        .from('profiles')
+        .update({ 
+            shop_name: shopName,
+            role: 'seller' // Upgrade role logic
+        })
+        .eq('id', userId)
+        .select()
+        .single();
+        
+      if (error) throw new Error(error.message);
+      return mapRowToUser(data);
   },
 
   getSessionUser: async (): Promise<User | null> => {
@@ -272,7 +288,8 @@ export const authService = {
                   avatar_url: newAvatar,
                   // Preserve existing fields if updating
                   whatsapp: profile?.whatsapp || '',
-                  phone: profile?.phone || ''
+                  phone: profile?.phone || '',
+                  shop_name: profile?.shop_name
               };
 
               // Silent update to ensure profile exists and has Google/Github data
@@ -286,7 +303,8 @@ export const authService = {
                   name: newName,
                   avatarUrl: newAvatar,
                   whatsapp: upsertData.whatsapp,
-                  phone: upsertData.phone
+                  phone: upsertData.phone,
+                  shopName: upsertData.shop_name
               };
           }
           
@@ -353,7 +371,8 @@ export const adminService = {
         .update({
             name: updates.name,
             whatsapp: updates.whatsapp,
-            phone: updates.phone
+            phone: updates.phone,
+            shop_name: updates.shopName
         })
         .eq('id', userId);
 
@@ -366,8 +385,6 @@ export const adminService = {
 
   deleteUser: async (userId: string): Promise<void> => {
     try {
-      // Note: This deletes the profile row. Auth user deletion requires service role key or RPC.
-      // Deleting profile effectively disables the user from using app features.
       const { error } = await supabase
         .from('profiles')
         .delete()
@@ -390,7 +407,6 @@ export const productService = {
         .order('created_at', { ascending: false });
 
       if (error) {
-         // Gracefully handle missing table during setup
          if (error.code === '42P01') { 
              console.warn("Products table missing (42P01). Returning empty list.");
              return [];
@@ -400,10 +416,27 @@ export const productService = {
       return data ? data.map(mapRowToProduct) : [];
     } catch (e) {
       console.error("Error fetching products:", JSON.stringify(e));
-      return []; // Return empty instead of throwing to avoid UI crash
+      return []; 
     }
   },
   
+  getShopStats: async (userId: string): Promise<{ total: number, active: number, sold: number, revenue: number }> => {
+      // Calculate basic stats for the shop dashboard
+      const { data, error } = await supabase
+        .from('products')
+        .select('id, status, price')
+        .eq('user_id', userId);
+        
+      if (error || !data) return { total: 0, active: 0, sold: 0, revenue: 0 };
+      
+      const total = data.length;
+      const active = data.filter(p => p.status === 'published').length;
+      const sold = data.filter(p => p.status === 'sold').length;
+      const revenue = data.filter(p => p.status === 'sold').reduce((sum, p) => sum + (p.price || 0), 0);
+      
+      return { total, active, sold, revenue };
+  },
+
   create: async (productData: Omit<Product, 'id' | 'createdAt' | 'userId'>): Promise<Product> => {
     const user = await authService.getSessionUser();
     if (!user) throw new Error("Debes iniciar sesión para publicar.");
@@ -488,9 +521,7 @@ export const productService = {
 
     if (error) throw new Error(error.message);
     
-    // Check if delete actually happened (handling RLS silent failures)
     if (!data || data.length === 0) {
-        // Double check existence
         const { count } = await supabase.from('products').select('*', { count: 'exact', head: true }).eq('id', id);
         if (count && count > 0) {
             throw new Error("No tienes permiso para eliminar este producto. (Bloqueo RLS)");
@@ -530,7 +561,6 @@ export const configService = {
       .single();
     
     if (error) {
-        // Handle missing table or empty rows gracefully
         if (error.code === '42P01' || error.code === 'PGRST116') {
              return DEFAULT_SETTINGS;
         }
@@ -560,7 +590,7 @@ export const configService = {
     const { error } = await supabase
       .from('site_settings')
       .upsert({
-        id: 1, // Singleton
+        id: 1, 
         site_name: settings.siteName,
         site_description: settings.siteDescription,
         logo_url: logoUrl,

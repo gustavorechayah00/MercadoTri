@@ -19,8 +19,11 @@ export const Layout: React.FC<LayoutProps> = ({
   children, user, onNavigate, activePage, onLogout, language, onToggleLanguage, t, siteConfig, getRoleLabel
 }) => {
   // Helpers to determine role capabilities
-  const canSell = user && (user.role === 'admin' || user.role === 'seller');
+  // Sellers can see sell button, but if no shop, app will redirect to config
+  const canSell = user && (user.role === 'admin' || user.role === 'seller' || user.role === 'buyer'); 
   const isAdmin = user && user.role === 'admin';
+  const hasShop = user && user.shopName;
+  
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -57,6 +60,18 @@ export const Layout: React.FC<LayoutProps> = ({
     );
   };
 
+  const handleSellClick = () => {
+      // Logic handled in App.tsx mainly, but navigation trigger is here
+      if (!user) {
+          onNavigate('login');
+      } else if (!hasShop && user.role !== 'admin') {
+          // If buyer/seller has no shop, go to config
+          onNavigate('shop-config');
+      } else {
+          onNavigate('upload');
+      }
+  };
+
   return (
     <div className="min-h-screen bg-tri-light flex flex-col font-sans">
       {/* Top Navbar */}
@@ -86,10 +101,10 @@ export const Layout: React.FC<LayoutProps> = ({
             
             <div className="flex items-center space-x-4">
               
-              {/* Desktop Sell Button (Always visible for sellers/admins) */}
-              {canSell && (
+              {/* Desktop Sell Button */}
+              {user && (
                 <button
-                  onClick={() => onNavigate('upload')}
+                  onClick={handleSellClick}
                   className="hidden md:flex items-center bg-tri-orange text-white px-5 py-2 rounded-full text-sm font-bold hover:bg-orange-600 transition shadow-sm hover:shadow-md mr-2"
                 >
                   <i className="fa-solid fa-camera mr-2"></i>
@@ -125,8 +140,13 @@ export const Layout: React.FC<LayoutProps> = ({
 
                       {/* Menu Options */}
                       <div className="py-1">
+                        {hasShop && (
+                            <button onClick={() => { onNavigate('my-shop'); setIsUserMenuOpen(false); }} className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-tri-blue font-medium transition flex items-center">
+                              <i className="fa-solid fa-store w-5 text-tri-orange"></i> Mi Tienda
+                            </button>
+                        )}
                         <button onClick={() => { onNavigate('marketplace'); setIsUserMenuOpen(false); }} className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-tri-blue font-medium transition flex items-center">
-                          <i className="fa-solid fa-store w-5 text-gray-400"></i> {t.navShop}
+                          <i className="fa-solid fa-shop w-5 text-gray-400"></i> {t.navShop}
                         </button>
                         <button onClick={() => { onNavigate('profile'); setIsUserMenuOpen(false); }} className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-tri-blue font-medium transition flex items-center">
                           <i className="fa-solid fa-user w-5 text-gray-400"></i> {t.myProfile}
@@ -178,17 +198,17 @@ export const Layout: React.FC<LayoutProps> = ({
       {/* Bottom Nav (Mobile Only) */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex justify-around py-3 pb-6 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-40">
         <NavButton 
-          icon="fa-store" 
+          icon="fa-shop" 
           label={t.navShop}
           active={activePage === 'marketplace' || activePage === 'product-detail'} 
           onClick={() => onNavigate('marketplace')} 
         />
-        {canSell && (
+        {user && (
           <NavButton 
             icon="fa-plus-circle" 
             label={t.navSell}
             active={activePage === 'upload'} 
-            onClick={() => onNavigate('upload')} 
+            onClick={handleSellClick} 
             primary
           />
         )}

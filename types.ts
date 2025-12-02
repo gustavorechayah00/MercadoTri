@@ -25,7 +25,7 @@ export interface Product {
   price: number;
   currency: string;
   imageUrls: string[]; 
-  status: 'draft' | 'published';
+  status: 'draft' | 'published' | 'sold';
   createdAt: number;
   tags: string[];
 }
@@ -54,6 +54,7 @@ export interface User {
   whatsapp?: string;
   phone?: string;
   avatarUrl?: string;
+  shopName?: string;
 }
 
 export interface ChatMessage {

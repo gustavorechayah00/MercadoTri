@@ -245,3 +245,23 @@ export const chatWithTriBot = async (input: { type: 'audio' | 'text', content: s
     return "Estoy teniendo problemas para conectar con la base de datos. Por favor intenta nuevamente.";
   }
 };
+
+export const generateShopName = async (userName: string, userEmail: string): Promise<string> => {
+    const settings = await configService.getSettings();
+    const apiKey = settings.geminiApiKey || process.env.API_KEY;
+    if (!apiKey) throw new Error("API Key de Gemini no configurada.");
+
+    const ai = new GoogleGenAI({ apiKey });
+    
+    const prompt = `Genera un nombre creativo y corto para una tienda de triatlón. 
+    El dueño se llama "${userName}" y su email es "${userEmail}".
+    Usa esta info para inspirarte. El nombre debe sonar profesional y deportivo.
+    Solo devuelve el nombre sugerido, nada más. Sin comillas.`;
+
+    const response = await ai.models.generateContent({
+        model: settings.geminiModel || "gemini-2.5-flash",
+        contents: { parts: [{ text: prompt }] }
+    });
+    
+    return response.text?.trim() || "TriShop";
+};
