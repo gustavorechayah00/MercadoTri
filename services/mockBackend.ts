@@ -125,7 +125,11 @@ export const authService = {
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: window.location.origin
+        redirectTo: window.location.origin,
+        queryParams: {
+          access_type: 'offline',
+          prompt: 'consent',
+        },
       }
     });
 
@@ -219,25 +223,70 @@ export const authService = {
       if (error || !session?.user) return null;
 
       const email = session.user.email || '';
+      const userId = session.user.id;
 
+      // Special handling for hardcoded admin
       if (email === 'admin@triproducts.com') {
-          return { id: session.user.id, email: email, name: 'Admin', role: 'admin' };
+          return { id: userId, email: email, name: 'Admin', role: 'admin' };
       }
 
+      // Try to get existing profile
       try {
           const { data: profile } = await supabase
           .from('profiles')
           .select('*')
-          .eq('id', session.user.id)
+          .eq('id', userId)
           .single();
           
+          // OAUTH SYNC: If profile exists but name/avatar missing, OR profile is missing completely
+          // We assume "User" or null name means we should try to sync from OAuth provider
+          const metadata = session.user.user_metadata || {};
+          const metaName = metadata.full_name || metadata.name || metadata.user_name;
+          const metaAvatar = metadata.avatar_url || metadata.picture;
+
+          const shouldUpsert = !profile || (metaName && (!profile.name || profile.name === 'Usuario'));
+
+          if (shouldUpsert) {
+              const newName = profile?.name && profile.name !== 'Usuario' ? profile.name : (metaName || email.split('@')[0]);
+              const newAvatar = profile?.avatar_url || metaAvatar || '';
+              const currentRole = profile?.role || 'buyer';
+
+              const upsertData = {
+                  id: userId,
+                  email: email,
+                  role: currentRole,
+                  name: newName,
+                  avatar_url: newAvatar,
+                  // Preserve existing fields if updating
+                  whatsapp: profile?.whatsapp || '',
+                  phone: profile?.phone || ''
+              };
+
+              // Silent update to ensure profile exists and has Google/Github data
+              await supabase.from('profiles').upsert(upsertData);
+              
+              // Return combined object immediately
+              return {
+                  id: userId,
+                  email: email,
+                  role: currentRole as UserRole,
+                  name: newName,
+                  avatarUrl: newAvatar,
+                  whatsapp: upsertData.whatsapp,
+                  phone: upsertData.phone
+              };
+          }
+          
+          // If profile exists and is fine
           if (profile) return mapRowToUser(profile);
+
       } catch (e) {
-          console.warn("Could not fetch profile session", e);
+          console.warn("Could not fetch/sync profile session", e);
       }
 
+      // Fallback
       return {
-        id: session.user.id,
+        id: userId,
         email: email,
         name: email.split('@')[0],
         role: 'buyer'
