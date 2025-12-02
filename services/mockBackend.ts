@@ -121,6 +121,30 @@ export const authService = {
     };
   },
 
+  loginWithGoogle: async () => {
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: window.location.origin
+      }
+    });
+
+    if (error) throw new Error(error.message);
+    return data;
+  },
+
+  loginWithGithub: async () => {
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'github',
+      options: {
+        redirectTo: window.location.origin
+      }
+    });
+
+    if (error) throw new Error(error.message);
+    return data;
+  },
+
   signUp: async (email: string, password: string, extraData: { name: string, whatsapp: string, phone: string }): Promise<User> => {
     // 1. Register in Auth
     const { data, error } = await supabase.auth.signUp({

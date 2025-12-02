@@ -1,8 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { ChatMessage } from '../types';
-import { chatWithTriBot } from '../services/gemgeminiService'; // Correct import path handled by environment
-
 // Fix import if services are in same folder structure relative to components
 import { chatWithTriBot as chatService } from '../services/geminiService';
 
@@ -117,10 +115,10 @@ export const TriBot: React.FC<TriBotProps> = ({ currentContext, onNavigateProduc
       
       {/* Glowing Eyes */}
       <circle cx="40" cy="50" r="4" fill="#06B6D4">
-        <animate attributeName="opacity" values="0.5;1;0.5" duration="2s" repeatCount="indefinite" />
+        <animate attributeName="opacity" values="0.5;1;0.5" dur="2s" repeatCount="indefinite" />
       </circle>
       <circle cx="60" cy="50" r="4" fill="#06B6D4">
-        <animate attributeName="opacity" values="0.5;1;0.5" duration="2s" repeatCount="indefinite" />
+        <animate attributeName="opacity" values="0.5;1;0.5" dur="2s" repeatCount="indefinite" />
       </circle>
       
       {/* Mouth Line */}
@@ -129,7 +127,7 @@ export const TriBot: React.FC<TriBotProps> = ({ currentContext, onNavigateProduc
       {/* Antenna */}
       <line x1="50" y1="25" x2="50" y2="15" stroke="#06B6D4" strokeWidth="3" />
       <circle cx="50" cy="12" r="5" fill="#F97316">
-         <animate attributeName="fill" values="#F97316;#FFD700;#F97316" duration="3s" repeatCount="indefinite" />
+         <animate attributeName="fill" values="#F97316;#FFD700;#F97316" dur="3s" repeatCount="indefinite" />
       </circle>
       
       {/* Ears/Side Bolts */}

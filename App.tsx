@@ -29,6 +29,9 @@ const translations = {
     adminHint: 'Usa credenciales de Supabase',
     noAccount: '¿No tienes cuenta? Regístrate',
     hasAccount: '¿Ya tienes cuenta? Ingresa',
+    googleLogin: 'Continuar con Google',
+    githubLogin: 'Continuar con GitHub',
+    or: 'o',
     
     // Profile
     myProfile: 'Mi Perfil',
@@ -143,6 +146,9 @@ const translations = {
     adminHint: 'Use Supabase Credentials',
     noAccount: "Don't have an account? Sign Up",
     hasAccount: 'Already have an account? Sign In',
+    googleLogin: 'Continue with Google',
+    githubLogin: 'Continue with GitHub',
+    or: 'or',
     
     // Profile
     myProfile: 'My Profile',
@@ -381,6 +387,28 @@ const LoginView = ({ onLoginSuccess, t, siteConfig }: { onLoginSuccess: (user: U
     }
   };
 
+  const handleGoogleLogin = async () => {
+    setLoading(true);
+    setError('');
+    try {
+        await authService.loginWithGoogle();
+    } catch (err: any) {
+        setError(err.message || 'Google Login failed');
+        setLoading(false);
+    }
+  };
+
+  const handleGithubLogin = async () => {
+    setLoading(true);
+    setError('');
+    try {
+        await authService.loginWithGithub();
+    } catch (err: any) {
+        setError(err.message || 'GitHub Login failed');
+        setLoading(false);
+    }
+  };
+
   const nameParts = siteConfig.siteName.split(' ');
   const firstPart = nameParts[0];
   const restPart = nameParts.slice(1).join(' ');
@@ -410,6 +438,34 @@ const LoginView = ({ onLoginSuccess, t, siteConfig }: { onLoginSuccess: (user: U
           <p className="text-gray-400 text-xs mt-1">{isSignUp ? t.signUpTitle : t.signInTitle}</p>
         </div>
         
+        <div className="space-y-3 mb-4">
+            {/* Google Login Button */}
+            <button 
+                type="button" 
+                onClick={handleGoogleLogin}
+                className="w-full bg-white text-gray-700 font-bold py-3.5 rounded-xl hover:bg-gray-50 transition flex items-center justify-center shadow-sm border border-gray-200"
+            >
+                <i className="fa-brands fa-google text-red-500 mr-2 text-xl"></i>
+                {t.googleLogin}
+            </button>
+            
+            {/* GitHub Login Button */}
+            <button 
+                type="button" 
+                onClick={handleGithubLogin}
+                className="w-full bg-gray-900 text-white font-bold py-3.5 rounded-xl hover:bg-black transition flex items-center justify-center shadow-md"
+            >
+                <i className="fa-brands fa-github text-white mr-2 text-xl"></i>
+                {t.githubLogin}
+            </button>
+        </div>
+
+        <div className="flex items-center mb-4">
+            <div className="flex-1 border-t border-gray-200"></div>
+            <span className="px-3 text-xs text-gray-400 font-bold uppercase">{t.or}</span>
+            <div className="flex-1 border-t border-gray-200"></div>
+        </div>
+
         <form onSubmit={handleSubmit} className="space-y-4">
           {isSignUp && (
             <>
