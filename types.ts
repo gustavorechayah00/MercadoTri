@@ -41,6 +41,7 @@ export interface AIAnalysisResult {
   confidenceScore: number;
   isSafe: boolean;
   safetyReason?: string;
+  currency?: string;
 }
 
 export type UserRole = 'admin' | 'seller' | 'buyer';

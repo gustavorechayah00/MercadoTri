@@ -71,6 +71,7 @@ const translations = {
     titleLabel: 'Título',
     categoryLabel: 'Categoría',
     priceLabel: 'Precio',
+    currencyLabel: 'Moneda',
     brandLabel: 'Marca',
     conditionLabel: 'Condición',
     descLabel: 'Descripción',
@@ -193,6 +194,7 @@ const translations = {
     titleLabel: 'Title',
     categoryLabel: 'Category',
     priceLabel: 'Price',
+    currencyLabel: 'Currency',
     brandLabel: 'Brand',
     conditionLabel: 'Condition',
     descLabel: 'Description',
@@ -292,6 +294,11 @@ const getConditionLabel = (cond: string, t: any) => {
     [Condition.USED_FAIR]: t.condFair
   };
   return map[cond] || cond;
+};
+
+const getPriceDisplay = (price: number, currency?: string) => {
+  const symbol = currency === 'USD' ? 'U$S' : currency === 'EUR' ? '€' : '$';
+  return `${symbol} ${price.toLocaleString()}`;
 };
 
 // 3. UPLOAD VIEW (Updated)
@@ -795,7 +802,8 @@ const EditView = ({ initialData, images: initialImages, onSave, onCancel, t, isE
     category: initialData.category,
     brand: initialData.brand,
     condition: initialData.condition,
-    price: initialData.suggestedPrice,
+    price: initialData.suggestedPrice || initialData.price || 0,
+    currency: initialData.currency || 'ARS',
     tags: initialData.tags.join(', ')
   });
   const [localImages, setLocalImages] = useState<string[]>(initialImages);
@@ -835,7 +843,6 @@ const EditView = ({ initialData, images: initialImages, onSave, onCancel, t, isE
         ...formData,
         imageUrls: localImages,
         tags: formData.tags.split(',').map((t: string) => t.trim()),
-        currency: 'USD',
         status: 'published'
       });
     } catch (e) { console.error(e); alert("Error guardando producto."); } 
@@ -902,8 +909,24 @@ const EditView = ({ initialData, images: initialImages, onSave, onCancel, t, isE
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase mb-1">{t.priceLabel} ($)</label>
-              <input type="number" className="w-full border border-gray-300 rounded-lg p-2.5 bg-white text-gray-900 outline-none focus:ring-1 focus:ring-tri-orange focus:border-tri-orange" value={formData.price} onChange={e => setFormData({...formData, price: Number(e.target.value)})} />
+              <label className="block text-xs font-bold text-gray-500 uppercase mb-1">{t.priceLabel}</label>
+              <div className="flex rounded-lg shadow-sm">
+                <select 
+                  className="bg-gray-100 border border-r-0 border-gray-300 text-gray-900 text-sm rounded-l-lg focus:ring-tri-orange focus:border-tri-orange block p-2.5 outline-none"
+                  value={formData.currency}
+                  onChange={e => setFormData({...formData, currency: e.target.value})}
+                >
+                  <option value="ARS">ARS</option>
+                  <option value="USD">USD</option>
+                  <option value="EUR">EUR</option>
+                </select>
+                <input 
+                  type="number" 
+                  className="rounded-none rounded-r-lg bg-white border border-gray-300 text-gray-900 focus:ring-1 focus:ring-tri-orange focus:border-tri-orange block flex-1 min-w-0 w-full text-sm p-2.5 outline-none" 
+                  value={formData.price} 
+                  onChange={e => setFormData({...formData, price: Number(e.target.value)})} 
+                />
+              </div>
             </div>
              <div>
               <label className="block text-xs font-bold text-gray-500 uppercase mb-1">{t.brandLabel}</label>
@@ -1031,7 +1054,7 @@ const ProductDetailView = ({ product, onBack, t, user, onEdit, onDelete }: any) 
           </div>
           <h1 className="text-3xl font-bold text-gray-900 mb-4">{product.title}</h1>
           <div className="text-4xl font-bold text-gray-900 mb-6">
-            ${product.price.toLocaleString()} <span className="text-lg text-gray-400 font-normal">{product.currency}</span>
+            {getPriceDisplay(product.price, product.currency)}
           </div>
           <div className="grid grid-cols-2 gap-4 mb-8 bg-gray-50 p-4 rounded-xl border border-gray-100">
             <div><p className="text-xs text-gray-500 uppercase font-bold">{t.brandLabel}</p><p className="font-medium text-gray-900">{product.brand}</p></div>
@@ -1413,7 +1436,7 @@ const App: React.FC = () => {
   const handleEditProduct = (product: Product) => {
     setAnalysisData({
       title: product.title, category: product.category, brand: product.brand, condition: product.condition,
-      description: product.description, suggestedPrice: product.price, tags: product.tags, confidenceScore: 1, isSafe: true
+      description: product.description, suggestedPrice: product.price, tags: product.tags, confidenceScore: 1, isSafe: true, currency: product.currency
     });
     setUploadImages(product.imageUrls); setEditingId(product.id); setView('edit');
   };
@@ -1666,7 +1689,7 @@ const App: React.FC = () => {
              (inventoryViewMode === 'grid' ? <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">{processedInventory.map(p => <ProductCard key={p.id} product={p} onClick={() => handleProductClick(p)} showStatus categoryLabel={getCategoryLabel(p.category, t)} />)}</div> : 
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden"><div className="overflow-x-auto"><table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50"><tr><th className="px-6 py-3 text-left"><input type="checkbox" className="rounded text-tri-orange cursor-pointer bg-white border-gray-300" checked={selectedInventoryItems.size === processedInventory.length && processedInventory.length > 0} onChange={() => selectAllInventoryItems(processedInventory)} /></th><th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">{t.titleLabel}</th><th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">{t.categoryLabel}</th><th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">{t.priceLabel}</th><th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th><th className="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th></tr></thead>
-                <tbody className="bg-white divide-y divide-gray-200">{processedInventory.map((p) => (<tr key={p.id} className="hover:bg-gray-50 transition"><td className="px-6 py-4"><input type="checkbox" className="rounded text-tri-orange cursor-pointer bg-white border-gray-300" checked={selectedInventoryItems.has(p.id)} onChange={() => toggleInventoryItemSelection(p.id)} /></td><td className="px-6 py-4"><div className="flex items-center"><div className="h-10 w-10 flex-shrink-0 rounded bg-gray-100 overflow-hidden mr-3 border border-gray-200"><img className="h-full w-full object-cover object-center" src={p.imageUrls[0]} alt="" /></div><div><div className="text-sm font-medium text-gray-900 cursor-pointer hover:text-tri-orange" onClick={() => handleProductClick(p)}>{p.title}</div><div className="text-xs text-gray-500">{p.brand}</div></div></div></td><td className="px-6 py-4"><span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">{getCategoryLabel(p.category, t)}</span></td><td className="px-6 py-4 text-sm text-gray-500 font-mono">${p.price.toLocaleString()}</td><td className="px-6 py-4"><span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${p.status === 'published' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>{p.status === 'published' ? 'Active' : 'Draft'}</span></td><td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium"><button onClick={() => handleEditProduct(p)} className="text-tri-blue hover:text-blue-900 mr-4"><i className="fa-solid fa-pen"></i></button><button onClick={(e) => handleDeleteProduct(p.id, e)} className="text-red-500 hover:text-red-700"><i className="fa-solid fa-trash"></i></button></td></tr>))}</tbody>
+                <tbody className="bg-white divide-y divide-gray-200">{processedInventory.map((p) => (<tr key={p.id} className="hover:bg-gray-50 transition"><td className="px-6 py-4"><input type="checkbox" className="rounded text-tri-orange cursor-pointer bg-white border-gray-300" checked={selectedInventoryItems.has(p.id)} onChange={() => toggleInventoryItemSelection(p.id)} /></td><td className="px-6 py-4"><div className="flex items-center"><div className="h-10 w-10 flex-shrink-0 rounded bg-gray-100 overflow-hidden mr-3 border border-gray-200"><img className="h-full w-full object-cover object-center" src={p.imageUrls[0]} alt="" /></div><div><div className="text-sm font-medium text-gray-900 cursor-pointer hover:text-tri-orange" onClick={() => handleProductClick(p)}>{p.title}</div><div className="text-xs text-gray-500">{p.brand}</div></div></div></td><td className="px-6 py-4"><span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">{getCategoryLabel(p.category, t)}</span></td><td className="px-6 py-4 text-sm text-gray-500 font-mono">{getPriceDisplay(p.price, p.currency)}</td><td className="px-6 py-4"><span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${p.status === 'published' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>{p.status === 'published' ? 'Active' : 'Draft'}</span></td><td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium"><button onClick={() => handleEditProduct(p)} className="text-tri-blue hover:text-blue-900 mr-4"><i className="fa-solid fa-pen"></i></button><button onClick={(e) => handleDeleteProduct(p.id, e)} className="text-red-500 hover:text-red-700"><i className="fa-solid fa-trash"></i></button></td></tr>))}</tbody>
               </table></div></div>)}
           </div>
         );

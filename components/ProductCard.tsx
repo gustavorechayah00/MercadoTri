@@ -26,6 +26,12 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onClick, show
     setCurrentImageIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
   };
 
+  // Helper for currency display
+  const getPriceDisplay = (price: number, currency: string) => {
+    const symbol = currency === 'USD' ? 'U$S' : currency === 'EUR' ? '€' : '$';
+    return `${symbol} ${price.toLocaleString()}`;
+  };
+
   return (
     <div 
       onClick={onClick}
@@ -93,7 +99,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onClick, show
 
         <div className="mt-auto flex justify-between items-end border-t border-gray-50 pt-2">
           <span className="text-base font-bold text-gray-900 tracking-tight">
-            ${product.price.toLocaleString()}
+            {getPriceDisplay(product.price, product.currency)}
           </span>
           <span className="text-[10px] text-gray-400">
              {new Date(product.createdAt).toLocaleDateString()}
