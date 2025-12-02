@@ -275,10 +275,6 @@ const getConditionLabel = (cond: string, t: any) => {
   return map[cond] || cond;
 };
 
-// ... (Other components like LoginView, ConfigView, ProfileView remain the same) ...
-// For brevity, I am not repeating unchanged components here unless they need edits.
-// But UploadView needs edit.
-
 // 3. UPLOAD VIEW (Updated)
 const UploadView = ({ onAnalysisComplete, onCancel, t }: { onAnalysisComplete: (data: AIAnalysisResult, imgs: string[]) => void, onCancel: () => void, t: any }) => {
   const [analyzing, setAnalyzing] = useState(false);
@@ -353,12 +349,8 @@ const UploadView = ({ onAnalysisComplete, onCancel, t }: { onAnalysisComplete: (
   );
 };
 
-// ... (Rest of App.tsx remains largely same, just including here for XML completeness if needed, but only returning necessary changes)
 
-// I will assume other components are imported or present in the final file. 
-// Since I must return the full content of the file if I change it, I will paste the whole App.tsx but reusing the existing code for parts not changed.
-
-const LoginView = ({ onLoginSuccess, t, siteConfig }: { onLoginSuccess: (user: User) => void, t: any, siteConfig: SiteSettings }) => {
+const LoginView = ({ onLoginSuccess, t, siteConfig, initialError }: { onLoginSuccess: (user: User) => void, t: any, siteConfig: SiteSettings, initialError?: string }) => {
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -366,7 +358,11 @@ const LoginView = ({ onLoginSuccess, t, siteConfig }: { onLoginSuccess: (user: U
   const [whatsapp, setWhatsapp] = useState('');
   const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState(initialError || '');
+
+  useEffect(() => {
+    if (initialError) setError(initialError);
+  }, [initialError]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -437,6 +433,18 @@ const LoginView = ({ onLoginSuccess, t, siteConfig }: { onLoginSuccess: (user: U
           <p className="text-gray-500 text-sm mt-2 font-bold tracking-wider">{siteConfig.siteDescription.slice(0, 30)}...</p>
           <p className="text-gray-400 text-xs mt-1">{isSignUp ? t.signUpTitle : t.signInTitle}</p>
         </div>
+
+        {error && (
+            <div className="mb-6 bg-red-50 border border-red-100 rounded-lg p-3 text-red-700 text-sm">
+                <div className="flex items-start">
+                    <i className="fa-solid fa-circle-exclamation mt-0.5 mr-2"></i>
+                    <div>
+                        <p className="font-bold">Error de Autenticación</p>
+                        <p className="text-xs mt-1 opacity-90">{error}</p>
+                    </div>
+                </div>
+            </div>
+        )}
         
         <div className="space-y-3 mb-4">
             {/* Google Login Button */}
@@ -507,8 +515,6 @@ const LoginView = ({ onLoginSuccess, t, siteConfig }: { onLoginSuccess: (user: U
             />
           </div>
 
-          {error && <p className="text-red-500 text-sm bg-red-50 p-3 rounded-lg border border-red-100">{error}</p>}
-          
           <button 
             type="submit" 
             disabled={loading}
@@ -1249,6 +1255,7 @@ const App: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [productsLoading, setProductsLoading] = useState(true);
   const [productsError, setProductsError] = useState('');
+  const [authError, setAuthError] = useState('');
   
   // Marketplace Filters
   const [searchTerm, setSearchTerm] = useState('');
@@ -1289,6 +1296,20 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const checkAuth = async () => {
+      // 1. Check for URL Errors from OAuth
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      const errorDesc = hashParams.get('error_description');
+      const errorCode = hashParams.get('error_code');
+      
+      if (errorDesc) {
+          const decodedError = decodeURIComponent(errorDesc.replace(/\+/g, ' '));
+          console.warn("OAuth Error detected:", decodedError);
+          setAuthError(decodedError);
+          // Clean URL
+          window.history.replaceState(null, '', window.location.pathname);
+      }
+
+      // 2. Check Session
       try {
         const u = await (authService as any).getSessionUser();
         if (u) setUser(u);
@@ -1493,7 +1514,7 @@ const App: React.FC = () => {
 
   const renderContent = () => {
     switch (view) {
-      case 'login': return <LoginView onLoginSuccess={(u) => { setUser(u); setView('marketplace'); }} t={t} siteConfig={siteConfig} />;
+      case 'login': return <LoginView onLoginSuccess={(u) => { setUser(u); setView('marketplace'); }} t={t} siteConfig={siteConfig} initialError={authError} />;
       case 'upload': return <UploadView onAnalysisComplete={handleAnalysisComplete} onCancel={() => setView('marketplace')} t={t} />;
       case 'edit': return analysisData ? <EditView initialData={analysisData} images={uploadImages} onSave={handleSaveProduct} onCancel={() => setView('marketplace')} t={t} isEditing={!!editingId} onDelete={() => editingId && handleDeleteProduct(editingId)} /> : null;
       case 'product-detail': return selectedProduct ? <ProductDetailView product={selectedProduct} onBack={() => setView('marketplace')} t={t} user={user} onEdit={handleEditProduct} onDelete={handleDeleteProduct} /> : null;
