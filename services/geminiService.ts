@@ -1,7 +1,7 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
 import { AIAnalysisResult, Category, Condition, ChatMessage, AIProvider } from "../types";
-import { configService } from "./mockBackend";
+import { configService, productService } from "./mockBackend";
 
 // --- PROMPTS ---
 const SYSTEM_INSTRUCTION = `
@@ -19,16 +19,18 @@ Tu tarea principal es doble:
 
 const BOT_SYSTEM_INSTRUCTION = `
 ROL:
-Eres un Asistente Virtual de Inteligencia Artificial ("TriBot") para la plataforma "Mercado Tri".
-Tu función es asistir a los usuarios (triatletas, ciclistas, nadadores) con dudas sobre la plataforma o sobre equipamiento.
+Eres "TriBot", el asistente experto de Mercado Tri.
+Tu objetivo es ayudar a los usuarios a encontrar productos en nuestra base de datos y asesorarlos sobre triatlón.
+
+CONOCIMIENTO:
+Tienes acceso al INVENTARIO ACTUAL de la tienda (listado abajo).
+- Si te preguntan por un producto, busca en tu lista de inventario y recomienda opciones ESPECÍFICAS con su precio.
+- Si no encuentras algo, sugiere productos similares o di que no hay stock por ahora.
+- Eres experto técnico: puedes explicar diferencias entre bicis de ruta y triatlón, tipos de neoprenos, etc.
 
 PERSONALIDAD:
-- Eres servicial, inteligente y entusiasta.
-- Hablas español rioplatense (Argentina) de forma natural ("vos", "che", etc.), pero mantienes un tono respetuoso.
-- Si te escriben, respondes escrito. Si te hablan, respondes escrito (el frontend maneja el audio).
-
-CONTEXTO:
-Recibirás el contexto de lo que el usuario está viendo en pantalla. Úsalo para dar respuestas pertinentes.
+- Entusiasta, deportivo y servicial.
+- Hablas español rioplatense (Argentina) natural ("che", "fijate", "nave").
 `;
 
 // --- HELPER: OPENAI CALLER ---
@@ -155,7 +157,6 @@ export const analyzeProductImage = async (base64Image: string): Promise<AIAnalys
 
   } catch (error: any) {
     console.error("AI Analysis Failed:", error);
-    // Propagate the specific moderation error if it exists
     throw error;
   }
 };
@@ -165,10 +166,24 @@ export const chatWithTriBot = async (input: { type: 'audio' | 'text', content: s
   const provider = settings.aiProvider;
   
   try {
+      // --- RAG: Fetch Products ---
+      const products = await productService.getAll();
+      const publishedProducts = products.filter(p => p.status === 'published');
+      
+      const inventoryContext = publishedProducts.length > 0 
+        ? publishedProducts.map(p => `- ${p.title} (${p.category}): $${p.price} [Marca: ${p.brand}, Estado: ${p.condition}]`).join('\n')
+        : "No hay productos publicados en este momento.";
+
       const recentHistory = history.slice(-5).map(h => `${h.sender === 'user' ? 'Usuario' : 'TriBot'}: ${h.text}`).join('\n');
+      
       const promptText = `
-        CONTEXTO ACTUAL DE LA PANTALLA: ${screenContext}
-        HISTORIAL RECIENTE: ${recentHistory}
+        CONTEXTO VISUAL PANTALLA: ${screenContext}
+        
+        INVENTARIO DISPONIBLE (Úsalo para responder preguntas de stock):
+        ${inventoryContext}
+
+        HISTORIAL RECIENTE:
+        ${recentHistory}
         
         ${input.type === 'text' ? `PREGUNTA DEL USUARIO: ${input.content}` : 'INSTRUCCIÓN: El usuario envió un audio. Responde a lo que escuchas.'}
       `;
@@ -217,6 +232,6 @@ export const chatWithTriBot = async (input: { type: 'audio' | 'text', content: s
 
   } catch (error) {
     console.error("TriBot Error:", error);
-    return "Uy, estoy teniendo problemas para conectar. ¿Me repetís?";
+    return "Uy, estoy teniendo problemas para conectar con la base de datos o el cerebro digital. ¿Me repetís?";
   }
 };

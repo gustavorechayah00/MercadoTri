@@ -10,7 +10,7 @@ interface TriBotProps {
 export const TriBot: React.FC<TriBotProps> = ({ currentContext }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([
-    { id: '1', sender: 'bot', text: '¡Hola! 🤖 Soy TriBot, tu asistente de IA. ¿En qué te puedo ayudar hoy?', timestamp: Date.now() }
+    { id: '1', sender: 'bot', text: '¡Hola! 🤖 Soy TriBot, tu asistente de IA. ¿Buscas algo específico o necesitas ayuda con equipamiento?', timestamp: Date.now() }
   ]);
   const [inputValue, setInputValue] = useState('');
   const [isRecording, setIsRecording] = useState(false);
@@ -102,6 +102,25 @@ export const TriBot: React.FC<TriBotProps> = ({ currentContext }) => {
     setIsProcessing(false);
   };
 
+  // Custom Icon: Face with Swim Cap and Goggles
+  const TriBotIcon = () => (
+    <svg viewBox="0 0 100 100" className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+      {/* Swim Cap */}
+      <path d="M20 50 C20 15 80 15 80 50 L 80 60 L 20 60 Z" fill="#06B6D4" /> 
+      {/* Face */}
+      <path d="M25 60 L 75 60 L 75 75 C 75 90 25 90 25 75 Z" fill="#FFD700" /> {/* Skin tone (Goldish for contrast) */}
+      {/* Goggles Strap */}
+      <rect x="18" y="55" width="64" height="4" fill="#333" />
+      {/* Goggles Lenses */}
+      <ellipse cx="35" cy="58" rx="12" ry="8" fill="#333" stroke="#fff" strokeWidth="2" />
+      <ellipse cx="65" cy="58" rx="12" ry="8" fill="#333" stroke="#fff" strokeWidth="2" />
+      {/* Nose */}
+      <path d="M50 70 L 48 78 L 52 78 Z" fill="#CCAC00" />
+      {/* Mouth */}
+      <path d="M40 85 Q 50 90 60 85" stroke="#333" strokeWidth="2" fill="none" />
+    </svg>
+  );
+
   return (
     <div className="fixed bottom-20 sm:bottom-6 right-6 z-50 flex flex-col items-end">
       {/* Chat Window */}
@@ -110,12 +129,12 @@ export const TriBot: React.FC<TriBotProps> = ({ currentContext }) => {
           {/* Header */}
           <div className="bg-gradient-to-r from-gray-900 to-gray-800 p-4 flex items-center justify-between text-white">
             <div className="flex items-center">
-              <div className="bg-white/10 p-2 rounded-lg mr-3 backdrop-blur-sm border border-white/20">
-                 <i className="fa-solid fa-microchip text-tri-blue"></i>
+              <div className="w-10 h-10 bg-white/10 p-1 rounded-full mr-3 backdrop-blur-sm border border-white/20 overflow-hidden">
+                 <TriBotIcon />
               </div>
               <div>
-                <h3 className="font-bold text-sm font-sport tracking-wide text-lg">TriBot AI</h3>
-                <p className="text-[10px] text-gray-300 uppercase tracking-wider">Asistente Inteligente</p>
+                <h3 className="font-bold text-sm font-sport tracking-wide text-lg">TriBot</h3>
+                <p className="text-[10px] text-gray-300 uppercase tracking-wider">Asistente de Mercado</p>
               </div>
             </div>
             <button onClick={() => setIsOpen(false)} className="text-white/80 hover:text-white">
@@ -128,8 +147,8 @@ export const TriBot: React.FC<TriBotProps> = ({ currentContext }) => {
             {messages.map((msg) => (
               <div key={msg.id} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
                 {msg.sender === 'bot' && (
-                    <div className="w-6 h-6 rounded-full bg-gray-200 flex-shrink-0 mr-2 flex items-center justify-center">
-                        <i className="fa-solid fa-robot text-xs text-gray-600"></i>
+                    <div className="w-8 h-8 rounded-full bg-blue-100 flex-shrink-0 mr-2 flex items-center justify-center overflow-hidden border border-blue-200">
+                        <div className="w-6 h-6"><TriBotIcon /></div>
                     </div>
                 )}
                 <div className={`max-w-[80%] rounded-2xl px-4 py-2 text-sm shadow-sm ${
@@ -198,9 +217,15 @@ export const TriBot: React.FC<TriBotProps> = ({ currentContext }) => {
       {/* Toggle Button (FAB) */}
       <button 
         onClick={() => setIsOpen(!isOpen)}
-        className={`${isOpen ? 'bg-gray-700 rotate-90' : 'bg-gradient-to-r from-tri-blue to-cyan-400'} text-white w-14 h-14 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center transform hover:scale-105`}
+        className={`${isOpen ? 'bg-gray-700 rotate-90' : 'bg-gradient-to-r from-tri-blue to-cyan-400'} text-white w-14 h-14 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center transform hover:scale-105 overflow-hidden border-2 border-white`}
       >
-        <i className={`fa-solid ${isOpen ? 'fa-times' : 'fa-microchip'} text-2xl`}></i>
+        {isOpen ? (
+            <i className="fa-solid fa-times text-2xl"></i>
+        ) : (
+            <div className="w-10 h-10 mt-1">
+                <TriBotIcon />
+            </div>
+        )}
       </button>
     </div>
   );
