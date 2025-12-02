@@ -143,7 +143,10 @@ export const authService = {
       provider: 'github',
       options: {
         redirectTo: window.location.origin,
-        scopes: 'read:user user:email' // CRITICAL: Fix for "Error getting user profile" when email is private
+        scopes: 'read:user user:email', // CRITICAL: Fix for "Error getting user profile" when email is private
+        queryParams: {
+            prompt: 'consent', // Force re-consent to ensure permissions are applied
+        }
       }
     });
 

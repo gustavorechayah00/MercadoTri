@@ -409,6 +409,8 @@ const LoginView = ({ onLoginSuccess, t, siteConfig, initialError }: { onLoginSuc
   const firstPart = nameParts[0];
   const restPart = nameParts.slice(1).join(' ');
 
+  const isProfileError = error.includes('user profile') || error.includes('provider');
+
   return (
     <div className="flex flex-col items-center justify-center min-h-[70vh]">
       <div className="w-full max-w-md bg-white p-8 rounded-2xl shadow-xl border border-gray-100">
@@ -441,6 +443,16 @@ const LoginView = ({ onLoginSuccess, t, siteConfig, initialError }: { onLoginSuc
                     <div>
                         <p className="font-bold">Error de Autenticación</p>
                         <p className="text-xs mt-1 opacity-90">{error}</p>
+                        {isProfileError && (
+                            <div className="mt-2 text-xs bg-white p-2 rounded border border-red-200">
+                                <strong>💡 Posible Solución GitHub:</strong><br/>
+                                <ul className="list-disc pl-4 mt-1 space-y-1">
+                                    <li>Verifica que estás usando una <strong>OAuth App</strong> y no una <em>GitHub App</em>.</li>
+                                    <li>Si usas <em>GitHub App</em>, ve a <em>Permissions</em> &gt; <em>Email addresses</em> y ponlo en <strong>Read-only</strong>.</li>
+                                    <li>Intenta de nuevo, hemos forzado la solicitud de permisos.</li>
+                                </ul>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
