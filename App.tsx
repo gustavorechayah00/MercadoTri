@@ -33,6 +33,11 @@ const translations = {
     githubLogin: 'Continuar con GitHub',
     or: 'o',
     
+    // Roles
+    roleAdmin: 'Administrador',
+    roleSeller: 'Vendedor',
+    roleBuyer: 'Comprador',
+
     // Profile
     myProfile: 'Mi Perfil',
     profileTitle: 'Editar Perfil',
@@ -150,6 +155,11 @@ const translations = {
     githubLogin: 'Continue with GitHub',
     or: 'or',
     
+    // Roles
+    roleAdmin: 'Admin',
+    roleSeller: 'Seller',
+    roleBuyer: 'Buyer',
+
     // Profile
     myProfile: 'My Profile',
     profileTitle: 'Edit Profile',
@@ -254,6 +264,15 @@ const getCategoryLabel = (cat: string, t: any) => {
     [Category.OTHER]: t.catOther
   };
   return map[cat] || cat;
+};
+
+const getRoleLabel = (role: string, t: any) => {
+  const map: Record<string, string> = {
+    'admin': t.roleAdmin,
+    'seller': t.roleSeller,
+    'buyer': t.roleBuyer
+  };
+  return map[role] || role;
 };
 
 // Config for icons and colors
@@ -689,7 +708,7 @@ const ConfigView = ({ siteConfig, onUpdateConfig, t }: { siteConfig: SiteSetting
 };
 
 
-const ProfileView = ({ user, t, onUpdateUser }: { user: User, t: any, onUpdateUser: (u: User) => void }) => {
+const ProfileView = ({ user, t, onUpdateUser, getRoleLabel }: { user: User, t: any, onUpdateUser: (u: User) => void, getRoleLabel: (r: string) => string }) => {
   const [formData, setFormData] = useState({ name: user.name, whatsapp: user.whatsapp || '', phone: user.phone || '' });
   const [avatar, setAvatar] = useState(user.avatarUrl || '');
   const [newAvatarFile, setNewAvatarFile] = useState<string | null>(null);
@@ -740,7 +759,7 @@ const ProfileView = ({ user, t, onUpdateUser }: { user: User, t: any, onUpdateUs
         <input type="file" ref={fileRef} className="hidden" accept="image/*" onChange={handleFileChange} />
         
         <div className="mt-2 text-xs font-bold uppercase px-3 py-1 bg-gray-100 rounded-full text-gray-600">
-           Rol: {user.role}
+           Rol: {getRoleLabel(user.role)}
         </div>
       </div>
 
@@ -1063,7 +1082,7 @@ const ProductDetailView = ({ product, onBack, t, user, onEdit, onDelete }: any) 
   );
 };
 
-const UserManagementView = ({ t, currentUser }: { t: any, currentUser: User | null }) => {
+const UserManagementView = ({ t, currentUser, getRoleLabel }: { t: any, currentUser: User | null, getRoleLabel: (r: string) => string }) => {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -1176,7 +1195,7 @@ const UserManagementView = ({ t, currentUser }: { t: any, currentUser: User | nu
                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
                         ${u.role === 'admin' ? 'bg-purple-100 text-purple-800' : 
                           u.role === 'seller' ? 'bg-tri-orange/10 text-tri-orange' : 'bg-green-100 text-green-800'}`}>
-                         {u.role.toUpperCase()}
+                         {getRoleLabel(u.role).toUpperCase()}
                        </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 flex items-center gap-2">
@@ -1534,9 +1553,9 @@ const App: React.FC = () => {
       case 'upload': return <UploadView onAnalysisComplete={handleAnalysisComplete} onCancel={() => setView('marketplace')} t={t} />;
       case 'edit': return analysisData ? <EditView initialData={analysisData} images={uploadImages} onSave={handleSaveProduct} onCancel={() => setView('marketplace')} t={t} isEditing={!!editingId} onDelete={() => editingId && handleDeleteProduct(editingId)} /> : null;
       case 'product-detail': return selectedProduct ? <ProductDetailView product={selectedProduct} onBack={() => setView('marketplace')} t={t} user={user} onEdit={handleEditProduct} onDelete={handleDeleteProduct} /> : null;
-      case 'users': return user?.role === 'admin' ? <UserManagementView t={t} currentUser={user} /> : null;
+      case 'users': return user?.role === 'admin' ? <UserManagementView t={t} currentUser={user} getRoleLabel={r => getRoleLabel(r, t)} /> : null;
       case 'config': return user?.role === 'admin' ? <ConfigView siteConfig={siteConfig} onUpdateConfig={setSiteConfig} t={t} /> : null;
-      case 'profile': return user ? <ProfileView user={user} t={t} onUpdateUser={setUser} /> : null;
+      case 'profile': return user ? <ProfileView user={user} t={t} onUpdateUser={setUser} getRoleLabel={r => getRoleLabel(r, t)} /> : null;
       case 'marketplace':
         const sortedProducts = getSortedMarketplaceProducts();
         return (
@@ -1599,7 +1618,7 @@ const App: React.FC = () => {
             ) : (
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4 lg:gap-5">
                     {sortedProducts.map(product => (
-                        <ProductCard key={product.id} product={product} onClick={() => handleProductClick(product)} />
+                        <ProductCard key={product.id} product={product} onClick={() => handleProductClick(product)} categoryLabel={getCategoryLabel(product.category, t)} />
                     ))}
                 </div>
             )}
@@ -1644,7 +1663,7 @@ const App: React.FC = () => {
             </div>
             {/* List/Grid View Rendering */}
             {baseInventory.length === 0 ? <div className="text-center py-12 bg-white rounded-xl border border-dashed border-gray-300"><p className="text-gray-500 mb-4">{t.emptyInventory}</p><button onClick={() => setView('upload')} className="text-tri-orange font-bold">{t.startSelling}</button></div> : 
-             (inventoryViewMode === 'grid' ? <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">{processedInventory.map(p => <ProductCard key={p.id} product={p} onClick={() => handleProductClick(p)} showStatus />)}</div> : 
+             (inventoryViewMode === 'grid' ? <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">{processedInventory.map(p => <ProductCard key={p.id} product={p} onClick={() => handleProductClick(p)} showStatus categoryLabel={getCategoryLabel(p.category, t)} />)}</div> : 
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden"><div className="overflow-x-auto"><table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50"><tr><th className="px-6 py-3 text-left"><input type="checkbox" className="rounded text-tri-orange cursor-pointer bg-white border-gray-300" checked={selectedInventoryItems.size === processedInventory.length && processedInventory.length > 0} onChange={() => selectAllInventoryItems(processedInventory)} /></th><th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">{t.titleLabel}</th><th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">{t.categoryLabel}</th><th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">{t.priceLabel}</th><th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th><th className="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th></tr></thead>
                 <tbody className="bg-white divide-y divide-gray-200">{processedInventory.map((p) => (<tr key={p.id} className="hover:bg-gray-50 transition"><td className="px-6 py-4"><input type="checkbox" className="rounded text-tri-orange cursor-pointer bg-white border-gray-300" checked={selectedInventoryItems.has(p.id)} onChange={() => toggleInventoryItemSelection(p.id)} /></td><td className="px-6 py-4"><div className="flex items-center"><div className="h-10 w-10 flex-shrink-0 rounded bg-gray-100 overflow-hidden mr-3 border border-gray-200"><img className="h-full w-full object-cover object-center" src={p.imageUrls[0]} alt="" /></div><div><div className="text-sm font-medium text-gray-900 cursor-pointer hover:text-tri-orange" onClick={() => handleProductClick(p)}>{p.title}</div><div className="text-xs text-gray-500">{p.brand}</div></div></div></td><td className="px-6 py-4"><span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">{getCategoryLabel(p.category, t)}</span></td><td className="px-6 py-4 text-sm text-gray-500 font-mono">${p.price.toLocaleString()}</td><td className="px-6 py-4"><span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${p.status === 'published' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>{p.status === 'published' ? 'Active' : 'Draft'}</span></td><td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium"><button onClick={() => handleEditProduct(p)} className="text-tri-blue hover:text-blue-900 mr-4"><i className="fa-solid fa-pen"></i></button><button onClick={(e) => handleDeleteProduct(p.id, e)} className="text-red-500 hover:text-red-700"><i className="fa-solid fa-trash"></i></button></td></tr>))}</tbody>
@@ -1655,7 +1674,7 @@ const App: React.FC = () => {
   };
 
   return (
-    <Layout user={user} activePage={view} onNavigate={setView} onLogout={handleLogout} language={language} onToggleLanguage={() => setLanguage(prev => prev === 'es' ? 'en' : 'es')} t={t} siteConfig={siteConfig}>
+    <Layout user={user} activePage={view} onNavigate={setView} onLogout={handleLogout} language={language} onToggleLanguage={() => setLanguage(prev => prev === 'es' ? 'en' : 'es')} t={t} siteConfig={siteConfig} getRoleLabel={r => getRoleLabel(r, t)}>
       {renderContent()}
       <TriBot currentContext={getScreenContext()} onNavigateProduct={handleNavigateProductById} />
     </Layout>

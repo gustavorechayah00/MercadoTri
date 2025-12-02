@@ -6,9 +6,10 @@ interface ProductCardProps {
   product: Product;
   onClick: () => void;
   showStatus?: boolean;
+  categoryLabel: string;
 }
 
-export const ProductCard: React.FC<ProductCardProps> = ({ product, onClick, showStatus }) => {
+export const ProductCard: React.FC<ProductCardProps> = ({ product, onClick, showStatus, categoryLabel }) => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   
   const images = product.imageUrls && product.imageUrls.length > 0 
@@ -68,7 +69,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onClick, show
         {/* Compact Category Badge */}
         <div className="absolute top-2 right-2 z-10">
            <span className="bg-white/95 backdrop-blur-sm text-gray-800 text-[10px] font-bold px-1.5 py-0.5 rounded shadow-sm border border-gray-100 uppercase tracking-tight">
-             {product.category}
+             {categoryLabel}
            </span>
         </div>
 

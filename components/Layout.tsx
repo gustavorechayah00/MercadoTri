@@ -1,4 +1,5 @@
-import React from 'react';
+
+import React, { useState, useRef, useEffect } from 'react';
 import { User, SiteSettings } from '../types';
 
 interface LayoutProps {
@@ -11,14 +12,30 @@ interface LayoutProps {
   onToggleLanguage: () => void;
   t: any;
   siteConfig: SiteSettings;
+  getRoleLabel: (role: string) => string;
 }
 
 export const Layout: React.FC<LayoutProps> = ({ 
-  children, user, onNavigate, activePage, onLogout, language, onToggleLanguage, t, siteConfig
+  children, user, onNavigate, activePage, onLogout, language, onToggleLanguage, t, siteConfig, getRoleLabel
 }) => {
   // Helpers to determine role capabilities
   const canSell = user && (user.role === 'admin' || user.role === 'seller');
   const isAdmin = user && user.role === 'admin';
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Close menu on click outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setIsUserMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   // Helper to render logo text dynamically or default
   const renderLogoText = () => {
@@ -68,45 +85,16 @@ export const Layout: React.FC<LayoutProps> = ({
             </div>
             
             <div className="flex items-center space-x-4">
-              {/* Admin Buttons */}
-              {isAdmin && (
-                <>
-                  <button
-                    onClick={() => onNavigate('users')}
-                    className={`hidden sm:flex items-center px-4 py-2 rounded-lg text-sm font-bold transition ${activePage === 'users' ? 'bg-gray-100 text-tri-orange' : 'text-gray-600 hover:text-tri-dark hover:bg-gray-50'}`}
-                  >
-                    <i className="fa-solid fa-users mr-2"></i>
-                    {t.navUsers}
-                  </button>
-                  <button
-                    onClick={() => onNavigate('config')}
-                    className={`hidden sm:flex items-center px-4 py-2 rounded-lg text-sm font-bold transition ${activePage === 'config' ? 'bg-gray-100 text-tri-orange' : 'text-gray-600 hover:text-tri-dark hover:bg-gray-50'}`}
-                  >
-                    <i className="fa-solid fa-gear mr-2"></i>
-                    Config
-                  </button>
-                </>
-              )}
-
-              {/* Desktop Sell & Inventory Buttons */}
+              
+              {/* Desktop Sell Button (Always visible for sellers/admins) */}
               {canSell && (
-                <>
-                  <button
-                    onClick={() => onNavigate('inventory')}
-                    className={`hidden md:flex items-center px-4 py-2 rounded-lg text-sm font-bold transition mr-2 ${activePage === 'inventory' ? 'bg-gray-100 text-tri-orange' : 'text-gray-600 hover:text-tri-dark hover:bg-gray-50'}`}
-                  >
-                    <i className="fa-solid fa-box-open mr-2"></i>
-                    {t.navInventory}
-                  </button>
-
-                  <button
-                    onClick={() => onNavigate('upload')}
-                    className="hidden md:flex items-center bg-tri-orange text-white px-5 py-2 rounded-full text-sm font-bold hover:bg-orange-600 transition shadow-sm hover:shadow-md mr-2"
-                  >
-                    <i className="fa-solid fa-camera mr-2"></i>
-                    {t.navSell}
-                  </button>
-                </>
+                <button
+                  onClick={() => onNavigate('upload')}
+                  className="hidden md:flex items-center bg-tri-orange text-white px-5 py-2 rounded-full text-sm font-bold hover:bg-orange-600 transition shadow-sm hover:shadow-md mr-2"
+                >
+                  <i className="fa-solid fa-camera mr-2"></i>
+                  {t.navSell}
+                </button>
               )}
 
               {/* Language Switcher */}
@@ -118,21 +106,56 @@ export const Layout: React.FC<LayoutProps> = ({
               </button>
 
               {user ? (
-                <div className="flex items-center space-x-2">
-                  <div className="flex flex-col items-end hidden sm:flex cursor-pointer" onClick={() => onNavigate('profile')}>
-                    <span className="text-sm text-gray-900 font-bold hover:text-tri-orange transition">
-                      {user.name}
-                    </span>
-                    <span className="text-[10px] uppercase text-tri-orange font-bold tracking-wider px-1 bg-orange-100 rounded">
-                      {user.role}
-                    </span>
-                  </div>
-                  <button onClick={() => onNavigate('profile')} className="w-8 h-8 rounded-full bg-gray-200 overflow-hidden border border-gray-200">
+                <div className="relative" ref={menuRef}>
+                  <button 
+                    onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                    className="w-9 h-9 rounded-full bg-gray-200 overflow-hidden border border-gray-200 hover:ring-2 hover:ring-tri-orange transition focus:outline-none"
+                  >
                      {user.avatarUrl ? <img src={user.avatarUrl} className="w-full h-full object-cover"/> : <i className="fa-solid fa-user text-gray-500 mt-1"></i>}
                   </button>
-                  <button onClick={onLogout} className="text-gray-500 hover:text-tri-dark transition ml-2" title={t.logout}>
-                    <i className="fa-solid fa-right-from-bracket text-lg"></i>
-                  </button>
+
+                  {/* Dropdown Menu */}
+                  {isUserMenuOpen && (
+                    <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl py-2 z-50 border border-gray-100 animate-fade-in-down origin-top-right">
+                      {/* Header with Name/Role */}
+                      <div className="px-4 py-3 border-b border-gray-100 bg-gray-50/50">
+                        <p className="text-sm font-bold text-gray-900 truncate">{user.name}</p>
+                        <p className="text-xs text-tri-orange font-bold uppercase tracking-wider">{getRoleLabel(user.role)}</p>
+                      </div>
+
+                      {/* Menu Options */}
+                      <div className="py-1">
+                        <button onClick={() => { onNavigate('marketplace'); setIsUserMenuOpen(false); }} className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-tri-blue font-medium transition flex items-center">
+                          <i className="fa-solid fa-store w-5 text-gray-400"></i> {t.navShop}
+                        </button>
+                        <button onClick={() => { onNavigate('profile'); setIsUserMenuOpen(false); }} className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-tri-blue font-medium transition flex items-center">
+                          <i className="fa-solid fa-user w-5 text-gray-400"></i> {t.myProfile}
+                        </button>
+                        
+                        {canSell && (
+                           <button onClick={() => { onNavigate('inventory'); setIsUserMenuOpen(false); }} className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-tri-blue font-medium transition flex items-center">
+                             <i className="fa-solid fa-box-open w-5 text-gray-400"></i> {t.navInventory}
+                           </button>
+                        )}
+
+                        {isAdmin && (
+                          <>
+                             <button onClick={() => { onNavigate('users'); setIsUserMenuOpen(false); }} className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-tri-blue font-medium transition flex items-center">
+                               <i className="fa-solid fa-users w-5 text-gray-400"></i> {t.navUsers}
+                             </button>
+                             <button onClick={() => { onNavigate('config'); setIsUserMenuOpen(false); }} className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-tri-blue font-medium transition flex items-center">
+                               <i className="fa-solid fa-gear w-5 text-gray-400"></i> Config
+                             </button>
+                          </>
+                        )}
+                        
+                        <div className="border-t border-gray-100 my-1"></div>
+                        <button onClick={() => { onLogout(); setIsUserMenuOpen(false); }} className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 font-medium transition flex items-center">
+                          <i className="fa-solid fa-right-from-bracket w-5"></i> {t.logout}
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <button 
