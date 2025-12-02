@@ -4,7 +4,7 @@ import { Layout } from './components/Layout';
 import { ProductCard } from './components/ProductCard';
 import { TriBot } from './components/TriBot'; 
 import { authService, productService, adminService, configService } from './services/mockBackend';
-import { analyzeProductImage, generateShopName } from './services/geminiService';
+import { analyzeProductImage, generateShopName, generateShopDescription } from './services/geminiService';
 import { Product, User, Category, Condition, AIAnalysisResult, UserRole, SiteSettings, AIProvider, ShopSummary } from './types';
 
 // --- Translation Dictionary ---
@@ -47,12 +47,16 @@ const translations = {
     
     // Shop
     shopConfigTitle: 'Configura tu Tienda',
+    shopEditTitle: 'Editar Tienda',
     shopConfigDesc: 'Para vender, primero necesitas crear tu tienda. Elige un nombre, sube un logo y comienza.',
     shopNameLabel: 'Nombre de la Tienda',
+    shopDescLabel: 'Descripción de la Tienda',
     shopLogoLabel: 'Logo de la Tienda',
     generateAiBtn: 'Generar con IA',
     createShopBtn: 'Crear Tienda',
+    saveShopBtn: 'Guardar Cambios',
     myShopDashboard: 'Panel de Mi Tienda',
+    editShop: 'Editar Tienda',
     
     // User Management
     usersTitle: 'Gestión de Usuarios',
@@ -184,12 +188,16 @@ const translations = {
 
     // Shop
     shopConfigTitle: 'Configure your Shop',
+    shopEditTitle: 'Edit Shop',
     shopConfigDesc: 'To start selling, you need to create your shop first. Choose a name, upload a logo, and start.',
     shopNameLabel: 'Shop Name',
+    shopDescLabel: 'Shop Description',
     shopLogoLabel: 'Shop Logo',
     generateAiBtn: 'Generate with AI',
     createShopBtn: 'Create Shop',
+    saveShopBtn: 'Save Changes',
     myShopDashboard: 'My Shop Dashboard',
+    editShop: 'Edit Shop',
 
     // User Management
     usersTitle: 'User Management',
@@ -331,23 +339,39 @@ const getPriceDisplay = (price: number, currency?: string) => {
 
 // --- NEW SHOP VIEWS ---
 
-const ShopConfigView = ({ user, t, onShopCreated }: { user: User, t: any, onShopCreated: (u: User) => void }) => {
+const ShopConfigView = ({ user, t, onShopCreated, isEditing }: { user: User, t: any, onShopCreated: (u: User) => void, isEditing?: boolean }) => {
     const [shopName, setShopName] = useState(user.shopName || user.name || '');
-    const [shopImage, setShopImage] = useState<string | null>(null);
-    const [generating, setGenerating] = useState(false);
+    const [shopDesc, setShopDesc] = useState(user.shopDescription || '');
+    const [shopImage, setShopImage] = useState<string | null>(user.shopImageUrl || null);
+    const [generatingName, setGeneratingName] = useState(false);
+    const [generatingDesc, setGeneratingDesc] = useState(false);
     const [saving, setSaving] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    const handleGenerate = async () => {
-        setGenerating(true);
+    const handleGenerateName = async () => {
+        setGeneratingName(true);
         try {
             const suggested = await generateShopName(user.name, user.email);
             setShopName(suggested);
         } catch (e) {
             console.error(e);
-            alert("Error generando nombre. Intenta manualmente.");
+            alert("Error generando nombre.");
         } finally {
-            setGenerating(false);
+            setGeneratingName(false);
+        }
+    };
+
+    const handleGenerateDesc = async () => {
+        if (!shopName) { alert("Primero ingresa el nombre de la tienda"); return; }
+        setGeneratingDesc(true);
+        try {
+            const suggested = await generateShopDescription(shopName, user.name);
+            setShopDesc(suggested);
+        } catch (e) {
+            console.error(e);
+            alert("Error generando descripción.");
+        } finally {
+            setGeneratingDesc(false);
         }
     };
 
@@ -363,11 +387,11 @@ const ShopConfigView = ({ user, t, onShopCreated }: { user: User, t: any, onShop
         e.preventDefault();
         setSaving(true);
         try {
-            const updatedUser = await (authService as any).createShop(user.id, shopName, shopImage);
+            const updatedUser = await (authService as any).createShop(user.id, shopName, shopImage, shopDesc);
             onShopCreated(updatedUser);
         } catch (e) {
             console.error(e);
-            alert("Error creando la tienda.");
+            alert("Error guardando datos de la tienda.");
         } finally {
             setSaving(false);
         }
@@ -375,8 +399,8 @@ const ShopConfigView = ({ user, t, onShopCreated }: { user: User, t: any, onShop
 
     return (
         <div className="max-w-md mx-auto bg-white p-8 rounded-2xl shadow-xl border border-gray-100 text-center">
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">{t.shopConfigTitle}</h2>
-            <p className="text-gray-500 text-sm mb-6">{t.shopConfigDesc}</p>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">{isEditing ? t.shopEditTitle : t.shopConfigTitle}</h2>
+            {!isEditing && <p className="text-gray-500 text-sm mb-6">{t.shopConfigDesc}</p>}
 
             <form onSubmit={handleCreate} className="space-y-6">
                 
@@ -385,7 +409,7 @@ const ShopConfigView = ({ user, t, onShopCreated }: { user: User, t: any, onShop
                     <label className="block text-xs font-bold text-gray-500 uppercase mb-2">{t.shopLogoLabel}</label>
                     <div 
                         onClick={() => fileInputRef.current?.click()}
-                        className="w-24 h-24 rounded-full bg-gray-50 border-2 border-dashed border-gray-300 flex items-center justify-center cursor-pointer hover:border-tri-orange overflow-hidden relative"
+                        className="w-24 h-24 rounded-full bg-white border-2 border-dashed border-gray-300 flex items-center justify-center cursor-pointer hover:border-tri-orange overflow-hidden relative shadow-sm"
                     >
                         {shopImage ? (
                             <img src={shopImage} alt="Shop Logo" className="w-full h-full object-cover" />
@@ -411,12 +435,32 @@ const ShopConfigView = ({ user, t, onShopCreated }: { user: User, t: any, onShop
                         />
                         <button 
                             type="button" 
-                            onClick={handleGenerate}
+                            onClick={handleGenerateName}
                             className="bg-tri-blue text-white px-4 rounded-xl hover:bg-cyan-600 transition flex items-center justify-center shadow-sm disabled:opacity-50"
-                            disabled={generating}
+                            disabled={generatingName}
                             title={t.generateAiBtn}
                         >
-                            {generating ? <i className="fa-solid fa-spinner fa-spin"></i> : <i className="fa-solid fa-wand-magic-sparkles"></i>}
+                            {generatingName ? <i className="fa-solid fa-spinner fa-spin"></i> : <i className="fa-solid fa-wand-magic-sparkles"></i>}
+                        </button>
+                    </div>
+                </div>
+
+                <div className="text-left">
+                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">{t.shopDescLabel}</label>
+                    <div className="relative">
+                        <textarea 
+                            className="w-full px-4 py-3 rounded-xl bg-white border border-gray-300 text-gray-900 focus:ring-2 focus:ring-tri-orange outline-none text-sm h-24" 
+                            value={shopDesc} 
+                            onChange={(e) => setShopDesc(e.target.value)} 
+                        />
+                        <button 
+                            type="button" 
+                            onClick={handleGenerateDesc}
+                            className="absolute bottom-2 right-2 bg-purple-500 text-white w-8 h-8 rounded-full hover:bg-purple-600 transition flex items-center justify-center shadow-sm disabled:opacity-50 text-xs"
+                            disabled={generatingDesc}
+                            title={t.generateAiBtn}
+                        >
+                            {generatingDesc ? <i className="fa-solid fa-spinner fa-spin"></i> : <i className="fa-solid fa-wand-magic-sparkles"></i>}
                         </button>
                     </div>
                 </div>
@@ -426,14 +470,14 @@ const ShopConfigView = ({ user, t, onShopCreated }: { user: User, t: any, onShop
                     disabled={saving}
                     className="w-full bg-tri-orange text-white font-bold py-3 rounded-xl hover:bg-orange-600 transition shadow-lg"
                 >
-                    {saving ? <i className="fa-solid fa-spinner fa-spin"></i> : t.createShopBtn}
+                    {saving ? <i className="fa-solid fa-spinner fa-spin"></i> : (isEditing ? t.saveShopBtn : t.createShopBtn)}
                 </button>
             </form>
         </div>
     );
 };
 
-const MyShopView = ({ user, t, onViewProduct }: { user: User, t: any, onViewProduct: (p: Product) => void }) => {
+const MyShopView = ({ user, t, onViewProduct, onEditShop }: { user: User, t: any, onViewProduct: (p: Product) => void, onEditShop: () => void }) => {
     const [stats, setStats] = useState({ total: 0, active: 0, sold: 0, revenue: 0 });
     const [products, setProducts] = useState<Product[]>([]);
     const [loading, setLoading] = useState(true);
@@ -468,8 +512,8 @@ const MyShopView = ({ user, t, onViewProduct }: { user: User, t: any, onViewProd
         <div className="space-y-6">
             {/* Header */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                <div className="flex items-center">
-                    <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mr-4 overflow-hidden border border-gray-100">
+                <div className="flex items-start">
+                    <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mr-4 overflow-hidden border border-gray-100 flex-shrink-0">
                         {user.shopImageUrl ? (
                             <img src={user.shopImageUrl} alt={user.shopName} className="w-full h-full object-cover" />
                         ) : (
@@ -477,8 +521,12 @@ const MyShopView = ({ user, t, onViewProduct }: { user: User, t: any, onViewProd
                         )}
                     </div>
                     <div>
-                        <h2 className="text-2xl font-bold text-gray-900">{user.shopName}</h2>
-                        <p className="text-sm text-gray-500">{t.myShopDashboard}</p>
+                        <div className="flex items-center gap-2">
+                             <h2 className="text-2xl font-bold text-gray-900">{user.shopName}</h2>
+                             <button onClick={onEditShop} className="text-gray-400 hover:text-tri-orange transition"><i className="fa-solid fa-pen-to-square"></i></button>
+                        </div>
+                        <p className="text-sm text-gray-500 font-bold uppercase tracking-wider mb-1">{t.myShopDashboard}</p>
+                        {user.shopDescription && <p className="text-sm text-gray-600 italic max-w-lg">"{user.shopDescription}"</p>}
                     </div>
                 </div>
                 <button className="bg-gradient-to-r from-tri-blue to-purple-500 text-white px-6 py-3 rounded-xl font-bold shadow-lg hover:opacity-90 transition flex items-center gap-2">
@@ -611,7 +659,7 @@ const EditView = ({ initialData, images: initialImages, onSave, onCancel, t, isE
 
   // ... (image handling code same as before) ...
   const handleAddImages = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
+    if (e.target.files && e.target.files[0]) {
       const files = Array.from(e.target.files) as File[];
       const remainingSlots = 10 - localImages.length;
       if (remainingSlots <= 0) { alert(t.maxPhotos); return; }
@@ -1038,7 +1086,8 @@ const App: React.FC = () => {
           case 'profile': return <ProfileView user={user} t={t} onUpdateUser={setUser} getRoleLabel={(r:string)=>getRoleLabel(r,t)} />;
           
           case 'shop-config': return user ? <ShopConfigView user={user} t={t} onShopCreated={handleShopCreated} /> : null;
-          case 'my-shop': return user ? <MyShopView user={user} t={t} onViewProduct={p => { setSelectedProduct(p); setView('product-detail'); }} /> : null;
+          case 'edit-shop': return user ? <ShopConfigView user={user} t={t} onShopCreated={handleShopCreated} isEditing /> : null;
+          case 'my-shop': return user ? <MyShopView user={user} t={t} onViewProduct={p => { setSelectedProduct(p); setView('product-detail'); }} onEditShop={() => setView('edit-shop')} /> : null;
 
           case 'inventory': 
              // ... (Inventory logic reused from previous) ...

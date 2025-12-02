@@ -65,7 +65,8 @@ const mapRowToUser = (row: any): User => ({
   phone: row.phone || '',
   avatarUrl: row.avatar_url || '',
   shopName: row.shop_name,
-  shopImageUrl: row.shop_image_url
+  shopImageUrl: row.shop_image_url,
+  shopDescription: row.shop_description // Mapped
 });
 
 // Default settings in case DB fetch fails
@@ -231,15 +232,19 @@ export const authService = {
     return mapRowToUser(data);
   },
   
-  createShop: async (userId: string, shopName: string, shopImageBase64?: string): Promise<User> => {
+  createShop: async (userId: string, shopName: string, shopImageBase64?: string, shopDescription?: string): Promise<User> => {
       let shopImageUrl = null;
-      if (shopImageBase64) {
-          shopImageUrl = await uploadImageToSupabase(shopImageBase64, 'avatars'); // Reuse avatars bucket or create a new 'shops' bucket
+      if (shopImageBase64 && shopImageBase64.startsWith('data:')) {
+          shopImageUrl = await uploadImageToSupabase(shopImageBase64, 'avatars');
+      } else if (shopImageBase64) {
+          // If it's already a URL (editing without changing image)
+          shopImageUrl = shopImageBase64;
       }
 
       const updatePayload: any = { 
           shop_name: shopName,
-          role: 'seller' // Upgrade role logic
+          shop_description: shopDescription,
+          role: 'seller' // Upgrade role logic (safe to keep on updates)
       };
       if (shopImageUrl) {
           updatePayload.shop_image_url = shopImageUrl;
@@ -301,7 +306,8 @@ export const authService = {
                   whatsapp: profile?.whatsapp || '',
                   phone: profile?.phone || '',
                   shop_name: profile?.shop_name,
-                  shop_image_url: profile?.shop_image_url
+                  shop_image_url: profile?.shop_image_url,
+                  shop_description: profile?.shop_description
               };
 
               // Silent update to ensure profile exists and has Google/Github data
@@ -317,7 +323,8 @@ export const authService = {
                   whatsapp: upsertData.whatsapp,
                   phone: upsertData.phone,
                   shopName: upsertData.shop_name,
-                  shopImageUrl: upsertData.shop_image_url
+                  shopImageUrl: upsertData.shop_image_url,
+                  shopDescription: upsertData.shop_description
               };
           }
           

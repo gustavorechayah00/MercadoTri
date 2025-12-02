@@ -265,3 +265,22 @@ export const generateShopName = async (userName: string, userEmail: string): Pro
     
     return response.text?.trim() || "TriShop";
 };
+
+export const generateShopDescription = async (shopName: string, userName: string): Promise<string> => {
+    const settings = await configService.getSettings();
+    const apiKey = settings.geminiApiKey || process.env.API_KEY;
+    if (!apiKey) throw new Error("API Key de Gemini no configurada.");
+
+    const ai = new GoogleGenAI({ apiKey });
+    
+    const prompt = `Escribe una descripción corta, atractiva y profesional para una tienda de equipamiento deportivo llamada "${shopName}" (cuyo dueño es ${userName}).
+    Enfócate en triatlón, calidad y servicio. Máximo 200 caracteres.
+    Sin comillas.`;
+
+    const response = await ai.models.generateContent({
+        model: settings.geminiModel || "gemini-2.5-flash",
+        contents: { parts: [{ text: prompt }] }
+    });
+    
+    return response.text?.trim() || "";
+};
