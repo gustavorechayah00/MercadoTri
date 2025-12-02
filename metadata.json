@@ -1,0 +1,8 @@
+{
+  "name": "Mercado Tri",
+  "description": "AI-powered marketplace for triathlon, cycling, running, and swimming gear.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
