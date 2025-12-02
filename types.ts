@@ -55,12 +55,13 @@ export interface User {
   phone?: string;
   avatarUrl?: string;
   shopName?: string;
+  shopImageUrl?: string; // New field for Shop specific logo
 }
 
 export interface ShopSummary {
   id: string; // This is the User ID of the seller
   name: string;
-  avatarUrl?: string;
+  shopImageUrl?: string; // Changed from avatarUrl to specific shop image
   productCount: number;
 }
 

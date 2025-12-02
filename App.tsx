@@ -47,8 +47,9 @@ const translations = {
     
     // Shop
     shopConfigTitle: 'Configura tu Tienda',
-    shopConfigDesc: 'Para vender, primero necesitas crear tu tienda. Elige un nombre o usa nuestra IA para generar uno.',
+    shopConfigDesc: 'Para vender, primero necesitas crear tu tienda. Elige un nombre, sube un logo y comienza.',
     shopNameLabel: 'Nombre de la Tienda',
+    shopLogoLabel: 'Logo de la Tienda',
     generateAiBtn: 'Generar con IA',
     createShopBtn: 'Crear Tienda',
     myShopDashboard: 'Panel de Mi Tienda',
@@ -183,8 +184,9 @@ const translations = {
 
     // Shop
     shopConfigTitle: 'Configure your Shop',
-    shopConfigDesc: 'To start selling, you need to create your shop first. Choose a name or let AI generate one.',
+    shopConfigDesc: 'To start selling, you need to create your shop first. Choose a name, upload a logo, and start.',
     shopNameLabel: 'Shop Name',
+    shopLogoLabel: 'Shop Logo',
     generateAiBtn: 'Generate with AI',
     createShopBtn: 'Create Shop',
     myShopDashboard: 'My Shop Dashboard',
@@ -331,8 +333,10 @@ const getPriceDisplay = (price: number, currency?: string) => {
 
 const ShopConfigView = ({ user, t, onShopCreated }: { user: User, t: any, onShopCreated: (u: User) => void }) => {
     const [shopName, setShopName] = useState(user.shopName || user.name || '');
+    const [shopImage, setShopImage] = useState<string | null>(null);
     const [generating, setGenerating] = useState(false);
     const [saving, setSaving] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const handleGenerate = async () => {
         setGenerating(true);
@@ -347,11 +351,19 @@ const ShopConfigView = ({ user, t, onShopCreated }: { user: User, t: any, onShop
         }
     };
 
+    const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            const reader = new FileReader();
+            reader.onload = (ev) => setShopImage(ev.target?.result as string);
+            reader.readAsDataURL(e.target.files[0]);
+        }
+    };
+
     const handleCreate = async (e: React.FormEvent) => {
         e.preventDefault();
         setSaving(true);
         try {
-            const updatedUser = await (authService as any).createShop(user.id, shopName);
+            const updatedUser = await (authService as any).createShop(user.id, shopName, shopImage);
             onShopCreated(updatedUser);
         } catch (e) {
             console.error(e);
@@ -363,13 +375,30 @@ const ShopConfigView = ({ user, t, onShopCreated }: { user: User, t: any, onShop
 
     return (
         <div className="max-w-md mx-auto bg-white p-8 rounded-2xl shadow-xl border border-gray-100 text-center">
-            <div className="w-16 h-16 bg-orange-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                <i className="fa-solid fa-store text-3xl text-tri-orange"></i>
-            </div>
             <h2 className="text-2xl font-bold text-gray-900 mb-2">{t.shopConfigTitle}</h2>
             <p className="text-gray-500 text-sm mb-6">{t.shopConfigDesc}</p>
 
-            <form onSubmit={handleCreate} className="space-y-4">
+            <form onSubmit={handleCreate} className="space-y-6">
+                
+                {/* Shop Image Upload */}
+                <div className="flex flex-col items-center">
+                    <label className="block text-xs font-bold text-gray-500 uppercase mb-2">{t.shopLogoLabel}</label>
+                    <div 
+                        onClick={() => fileInputRef.current?.click()}
+                        className="w-24 h-24 rounded-full bg-gray-50 border-2 border-dashed border-gray-300 flex items-center justify-center cursor-pointer hover:border-tri-orange overflow-hidden relative"
+                    >
+                        {shopImage ? (
+                            <img src={shopImage} alt="Shop Logo" className="w-full h-full object-cover" />
+                        ) : (
+                            <i className="fa-solid fa-store text-3xl text-gray-300"></i>
+                        )}
+                        <div className="absolute inset-0 bg-black/0 hover:bg-black/10 transition flex items-center justify-center">
+                           <i className="fa-solid fa-camera text-white opacity-0 hover:opacity-100 drop-shadow-md"></i>
+                        </div>
+                    </div>
+                    <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleImageChange} />
+                </div>
+
                 <div className="text-left">
                     <label className="block text-xs font-bold text-gray-500 uppercase mb-1">{t.shopNameLabel}</label>
                     <div className="flex gap-2">
@@ -395,7 +424,7 @@ const ShopConfigView = ({ user, t, onShopCreated }: { user: User, t: any, onShop
                 <button 
                     type="submit" 
                     disabled={saving}
-                    className="w-full bg-tri-orange text-white font-bold py-3 rounded-xl hover:bg-orange-600 transition shadow-lg mt-4"
+                    className="w-full bg-tri-orange text-white font-bold py-3 rounded-xl hover:bg-orange-600 transition shadow-lg"
                 >
                     {saving ? <i className="fa-solid fa-spinner fa-spin"></i> : t.createShopBtn}
                 </button>
@@ -440,8 +469,12 @@ const MyShopView = ({ user, t, onViewProduct }: { user: User, t: any, onViewProd
             {/* Header */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
                 <div className="flex items-center">
-                    <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center mr-4">
-                        <i className="fa-solid fa-store text-3xl text-gray-400"></i>
+                    <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mr-4 overflow-hidden border border-gray-100">
+                        {user.shopImageUrl ? (
+                            <img src={user.shopImageUrl} alt={user.shopName} className="w-full h-full object-cover" />
+                        ) : (
+                            <i className="fa-solid fa-store text-3xl text-gray-400"></i>
+                        )}
                     </div>
                     <div>
                         <h2 className="text-2xl font-bold text-gray-900">{user.shopName}</h2>
@@ -1063,7 +1096,7 @@ const App: React.FC = () => {
                                  {shops.map(shop => (
                                      <div key={shop.id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col items-center text-center hover:shadow-md transition group">
                                          <div className="w-16 h-16 rounded-full bg-gray-50 mb-3 overflow-hidden border border-gray-100 group-hover:border-tri-orange transition">
-                                             {shop.avatarUrl ? <img src={shop.avatarUrl} className="w-full h-full object-cover"/> : <i className="fa-solid fa-store text-2xl text-gray-300 mt-4"></i>}
+                                             {shop.shopImageUrl ? <img src={shop.shopImageUrl} className="w-full h-full object-cover"/> : <i className="fa-solid fa-store text-2xl text-gray-300 mt-4"></i>}
                                          </div>
                                          <h4 className="font-bold text-gray-900 text-sm mb-1">{shop.name}</h4>
                                          <p className="text-xs text-gray-500 mb-3">{shop.productCount} {t.productsCount}</p>

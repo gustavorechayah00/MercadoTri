@@ -64,7 +64,8 @@ const mapRowToUser = (row: any): User => ({
   whatsapp: row.whatsapp || '',
   phone: row.phone || '',
   avatarUrl: row.avatar_url || '',
-  shopName: row.shop_name
+  shopName: row.shop_name,
+  shopImageUrl: row.shop_image_url
 });
 
 // Default settings in case DB fetch fails
@@ -230,14 +231,24 @@ export const authService = {
     return mapRowToUser(data);
   },
   
-  createShop: async (userId: string, shopName: string): Promise<User> => {
+  createShop: async (userId: string, shopName: string, shopImageBase64?: string): Promise<User> => {
+      let shopImageUrl = null;
+      if (shopImageBase64) {
+          shopImageUrl = await uploadImageToSupabase(shopImageBase64, 'avatars'); // Reuse avatars bucket or create a new 'shops' bucket
+      }
+
+      const updatePayload: any = { 
+          shop_name: shopName,
+          role: 'seller' // Upgrade role logic
+      };
+      if (shopImageUrl) {
+          updatePayload.shop_image_url = shopImageUrl;
+      }
+
       // 1. Update Profile with shop name AND force role to seller if currently buyer
       const { data, error } = await supabase
         .from('profiles')
-        .update({ 
-            shop_name: shopName,
-            role: 'seller' // Upgrade role logic
-        })
+        .update(updatePayload)
         .eq('id', userId)
         .select()
         .single();
@@ -289,7 +300,8 @@ export const authService = {
                   // Preserve existing fields if updating
                   whatsapp: profile?.whatsapp || '',
                   phone: profile?.phone || '',
-                  shop_name: profile?.shop_name
+                  shop_name: profile?.shop_name,
+                  shop_image_url: profile?.shop_image_url
               };
 
               // Silent update to ensure profile exists and has Google/Github data
@@ -304,7 +316,8 @@ export const authService = {
                   avatarUrl: newAvatar,
                   whatsapp: upsertData.whatsapp,
                   phone: upsertData.phone,
-                  shopName: upsertData.shop_name
+                  shopName: upsertData.shop_name,
+                  shopImageUrl: upsertData.shop_image_url
               };
           }
           
@@ -441,7 +454,7 @@ export const productService = {
         // 1. Fetch Sellers with Shops
         const { data: sellers, error: sellerError } = await supabase
           .from('profiles')
-          .select('id, shop_name, avatar_url')
+          .select('id, shop_name, shop_image_url')
           .not('shop_name', 'is', null);
 
         if (sellerError) throw sellerError;
@@ -464,7 +477,7 @@ export const productService = {
             .map(s => ({
                 id: s.id,
                 name: s.shop_name,
-                avatarUrl: s.avatar_url,
+                shopImageUrl: s.shop_image_url,
                 productCount: productMap[s.id] || 0
             }))
             .filter(s => s.productCount > 0) // Only shops with products
