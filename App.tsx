@@ -433,7 +433,7 @@ const ConfigView = ({ siteConfig, onUpdateConfig, t }: { siteConfig: SiteSetting
                 <div className="flex flex-col items-center sm:items-start">
                     <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Logo</label>
                     <div className="flex items-center gap-4">
-                        <div className="w-20 h-20 bg-gray-50 border border-gray-200 rounded-lg flex items-center justify-center overflow-hidden">
+                        <div className="w-20 h-20 bg-white border border-gray-200 rounded-lg flex items-center justify-center overflow-hidden">
                             {(logoFile || formData.logoUrl) ? (
                             <img src={logoFile || formData.logoUrl} className="w-full h-full object-contain" />
                             ) : (
@@ -441,7 +441,7 @@ const ConfigView = ({ siteConfig, onUpdateConfig, t }: { siteConfig: SiteSetting
                             )}
                         </div>
                         <div>
-                            <button type="button" onClick={() => fileRef.current?.click()} className="px-4 py-2 border border-gray-300 rounded text-sm font-bold text-gray-700 hover:bg-gray-50">
+                            <button type="button" onClick={() => fileRef.current?.click()} className="px-4 py-2 border border-gray-300 rounded text-sm font-bold text-gray-700 hover:bg-gray-50 bg-white">
                                 Cambiar
                             </button>
                             <input type="file" ref={fileRef} className="hidden" accept="image/*" onChange={handleFileChange} />
@@ -451,15 +451,15 @@ const ConfigView = ({ siteConfig, onUpdateConfig, t }: { siteConfig: SiteSetting
 
                 <div>
                     <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Nombre del Sitio</label>
-                    <input type="text" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tri-orange outline-none" value={formData.siteName} onChange={e => setFormData({...formData, siteName: e.target.value})} />
+                    <input type="text" className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-tri-orange outline-none" value={formData.siteName} onChange={e => setFormData({...formData, siteName: e.target.value})} />
                 </div>
                 <div>
                     <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Descripción</label>
-                    <textarea className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tri-orange outline-none h-20" value={formData.siteDescription} onChange={e => setFormData({...formData, siteDescription: e.target.value})} />
+                    <textarea className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-tri-orange outline-none h-20" value={formData.siteDescription} onChange={e => setFormData({...formData, siteDescription: e.target.value})} />
                 </div>
                 <div>
                     <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Idioma por Defecto</label>
-                    <select className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white" value={formData.defaultLanguage} onChange={e => setFormData({...formData, defaultLanguage: e.target.value as 'es' | 'en'})}>
+                    <select className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-900" value={formData.defaultLanguage} onChange={e => setFormData({...formData, defaultLanguage: e.target.value as 'es' | 'en'})}>
                         <option value="es">Español</option>
                         <option value="en">English</option>
                     </select>
@@ -477,12 +477,12 @@ const ConfigView = ({ siteConfig, onUpdateConfig, t }: { siteConfig: SiteSetting
                  <div>
                     <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Proveedor de AI</label>
                     <div className="flex gap-4">
-                        <label className={`flex-1 border rounded-lg p-4 cursor-pointer transition ${formData.aiProvider === 'gemini' ? 'bg-blue-50 border-tri-blue ring-1 ring-tri-blue' : 'hover:bg-gray-50'}`}>
+                        <label className={`flex-1 border rounded-lg p-4 cursor-pointer transition bg-white ${formData.aiProvider === 'gemini' ? 'border-tri-blue ring-1 ring-tri-blue' : 'hover:bg-gray-50 border-gray-200'}`}>
                             <input type="radio" name="aiProvider" value="gemini" checked={formData.aiProvider === 'gemini'} onChange={() => setFormData({...formData, aiProvider: 'gemini'})} className="hidden" />
                             <div className="font-bold text-gray-900">Google Gemini</div>
                             <div className="text-xs text-gray-500">Recomendado (Rápido y Multimodal)</div>
                         </label>
-                        <label className={`flex-1 border rounded-lg p-4 cursor-pointer transition ${formData.aiProvider === 'openai' ? 'bg-green-50 border-green-500 ring-1 ring-green-500' : 'hover:bg-gray-50'}`}>
+                        <label className={`flex-1 border rounded-lg p-4 cursor-pointer transition bg-white ${formData.aiProvider === 'openai' ? 'border-green-500 ring-1 ring-green-500' : 'hover:bg-gray-50 border-gray-200'}`}>
                             <input type="radio" name="aiProvider" value="openai" checked={formData.aiProvider === 'openai'} onChange={() => setFormData({...formData, aiProvider: 'openai'})} className="hidden" />
                             <div className="font-bold text-gray-900">OpenAI</div>
                             <div className="text-xs text-gray-500">GPT-4o (Requiere API Key)</div>
@@ -494,11 +494,11 @@ const ConfigView = ({ siteConfig, onUpdateConfig, t }: { siteConfig: SiteSetting
                      <div className="bg-gray-50 p-4 rounded-lg space-y-4 animate-fade-in">
                         <div>
                             <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Gemini API Key</label>
-                            <input type="password" placeholder="AIzaSy..." className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tri-blue outline-none" value={formData.geminiApiKey || ''} onChange={e => setFormData({...formData, geminiApiKey: e.target.value})} />
+                            <input type="password" placeholder="AIzaSy..." className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-tri-blue outline-none" value={formData.geminiApiKey || ''} onChange={e => setFormData({...formData, geminiApiKey: e.target.value})} />
                         </div>
                         <div>
                             <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Modelo</label>
-                            <input type="text" placeholder="gemini-2.5-flash" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tri-blue outline-none" value={formData.geminiModel || 'gemini-2.5-flash'} onChange={e => setFormData({...formData, geminiModel: e.target.value})} />
+                            <input type="text" placeholder="gemini-2.5-flash" className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-tri-blue outline-none" value={formData.geminiModel || 'gemini-2.5-flash'} onChange={e => setFormData({...formData, geminiModel: e.target.value})} />
                         </div>
                      </div>
                  )}
@@ -507,11 +507,11 @@ const ConfigView = ({ siteConfig, onUpdateConfig, t }: { siteConfig: SiteSetting
                      <div className="bg-gray-50 p-4 rounded-lg space-y-4 animate-fade-in">
                         <div>
                             <label className="block text-xs font-bold text-gray-500 uppercase mb-1">OpenAI API Key</label>
-                            <input type="password" placeholder="sk-..." className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none" value={formData.openaiApiKey || ''} onChange={e => setFormData({...formData, openaiApiKey: e.target.value})} />
+                            <input type="password" placeholder="sk-..." className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-green-500 outline-none" value={formData.openaiApiKey || ''} onChange={e => setFormData({...formData, openaiApiKey: e.target.value})} />
                         </div>
                         <div>
                             <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Modelo</label>
-                            <input type="text" placeholder="gpt-4o" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none" value={formData.openaiModel || 'gpt-4o'} onChange={e => setFormData({...formData, openaiModel: e.target.value})} />
+                            <input type="text" placeholder="gpt-4o" className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-green-500 outline-none" value={formData.openaiModel || 'gpt-4o'} onChange={e => setFormData({...formData, openaiModel: e.target.value})} />
                         </div>
                      </div>
                  )}
@@ -568,7 +568,7 @@ const ProfileView = ({ user, t, onUpdateUser }: { user: User, t: any, onUpdateUs
       <h2 className="text-2xl font-bold text-gray-900 mb-6">{t.profileTitle}</h2>
       
       <div className="flex flex-col items-center mb-8">
-        <div className="relative w-32 h-32 rounded-full overflow-hidden border-4 border-gray-100 mb-4 bg-gray-50">
+        <div className="relative w-32 h-32 rounded-full overflow-hidden border-4 border-gray-100 mb-4 bg-white">
            {(newAvatarFile || avatar) ? (
              <img src={newAvatarFile || avatar} alt="Profile" className="w-full h-full object-cover" />
            ) : (
@@ -590,16 +590,16 @@ const ProfileView = ({ user, t, onUpdateUser }: { user: User, t: any, onUpdateUs
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="block text-xs font-bold text-gray-500 uppercase mb-1">{t.nameLabel}</label>
-          <input type="text" className="w-full px-4 py-3 rounded-lg bg-gray-50 border border-gray-200 focus:bg-white focus:ring-2 focus:ring-tri-orange outline-none" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+          <input type="text" className="w-full px-4 py-3 rounded-lg bg-white border border-gray-300 text-gray-900 focus:bg-white focus:ring-2 focus:ring-tri-orange outline-none" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-xs font-bold text-gray-500 uppercase mb-1">{t.whatsappLabel}</label>
-            <input type="tel" className="w-full px-4 py-3 rounded-lg bg-gray-50 border border-gray-200 focus:bg-white focus:ring-2 focus:ring-tri-orange outline-none" value={formData.whatsapp} onChange={e => setFormData({...formData, whatsapp: e.target.value})} />
+            <input type="tel" className="w-full px-4 py-3 rounded-lg bg-white border border-gray-300 text-gray-900 focus:bg-white focus:ring-2 focus:ring-tri-orange outline-none" value={formData.whatsapp} onChange={e => setFormData({...formData, whatsapp: e.target.value})} />
           </div>
           <div>
             <label className="block text-xs font-bold text-gray-500 uppercase mb-1">{t.phoneLabel}</label>
-            <input type="tel" className="w-full px-4 py-3 rounded-lg bg-gray-50 border border-gray-200 focus:bg-white focus:ring-2 focus:ring-tri-orange outline-none" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} />
+            <input type="tel" className="w-full px-4 py-3 rounded-lg bg-white border border-gray-300 text-gray-900 focus:bg-white focus:ring-2 focus:ring-tri-orange outline-none" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} />
           </div>
         </div>
         <div className="pt-4">
