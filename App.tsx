@@ -1297,9 +1297,13 @@ const App: React.FC = () => {
   useEffect(() => {
     const checkAuth = async () => {
       // 1. Check for URL Errors from OAuth
-      const hashParams = new URLSearchParams(window.location.hash.substring(1));
-      const errorDesc = hashParams.get('error_description');
-      const errorCode = hashParams.get('error_code');
+      // Supabase can return errors in hash (#) or query params (?) depending on flow
+      const urlHash = window.location.hash.substring(1);
+      const urlQuery = window.location.search.substring(1);
+      
+      const params = new URLSearchParams(urlHash || urlQuery);
+      const errorDesc = params.get('error_description');
+      const errorCode = params.get('error_code');
       
       if (errorDesc) {
           const decodedError = decodeURIComponent(errorDesc.replace(/\+/g, ' '));

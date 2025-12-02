@@ -126,6 +126,7 @@ export const authService = {
       provider: 'google',
       options: {
         redirectTo: window.location.origin,
+        scopes: 'email profile', // Explicitly request profile data
         queryParams: {
           access_type: 'offline',
           prompt: 'consent',
@@ -141,7 +142,8 @@ export const authService = {
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'github',
       options: {
-        redirectTo: window.location.origin
+        redirectTo: window.location.origin,
+        scopes: 'read:user user:email' // CRITICAL: Fix for "Error getting user profile" when email is private
       }
     });
 
