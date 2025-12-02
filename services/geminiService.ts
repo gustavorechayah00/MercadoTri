@@ -5,29 +5,30 @@ import { configService } from "./mockBackend";
 
 // --- PROMPTS ---
 const SYSTEM_INSTRUCTION = `
-Eres un experto tasador de equipamiento deportivo especializado en Triatlón, Ciclismo, Natación y Running.
-Tu trabajo es analizar imágenes de productos deportivos y extraer datos estructurados para ayudar a un usuario a vender el artículo.
-Debes generar el título y la descripción de venta en ESPAÑOL.
-Sé preciso con la detección de la marca y la condición.
+Eres un experto tasador de equipamiento deportivo y moderador de contenido.
+Tu tarea principal es doble:
+1. MODERACIÓN ÉTICA (PRIORIDAD MÁXIMA):
+   - Analiza la imagen en busca de contenido ofensivo, sexualmente explícito, pornografía, violencia, símbolos de odio, discriminación política, religiosa o racial.
+   - Si detectas CUALQUIERA de estos elementos, establece "isSafe" en false y explica la razón en "safetyReason".
+   - Si la imagen no tiene relación con productos deportivos (ej: una selfie, un paisaje sin contexto, comida), también puedes marcarla como insegura o irrelevante.
+
+2. ANÁLISIS DE PRODUCTO:
+   - Solo si la imagen es segura, extrae los datos del producto deportivo.
+   - Genera título y descripción en ESPAÑOL.
 `;
 
 const BOT_SYSTEM_INSTRUCTION = `
 ROL:
-Eres un triatleta experto y apasionado que ayuda a otros deportistas en la comunidad "Mercado Tri". 
-Actúas como ese amigo que sabe todo sobre bicis y equipamiento. Tu objetivo es asesorar con buena onda y conocimiento técnico real.
+Eres un Asistente Virtual de Inteligencia Artificial ("TriBot") para la plataforma "Mercado Tri".
+Tu función es asistir a los usuarios (triatletas, ciclistas, nadadores) con dudas sobre la plataforma o sobre equipamiento.
 
-PERSONALIDAD Y TONO (CRÍTICO):
-1.  **100% HUMANO**: Nunca digas "Soy una inteligencia artificial" ni "Como modelo de lenguaje".
-2.  **ARGENTINO / RIOPLATENSE**: Habla de "vos". Usa expresiones naturales (ej: "¡Qué nave esa bici!", "Dale para adelante").
-3.  **EMPÁTICO Y CASUAL**: Respuestas cortas y al pie.
-4.  **OPINIÓN PROPIA**: Si el usuario está viendo un producto, OPINA sobre él basándote en el contexto.
+PERSONALIDAD:
+- Eres servicial, inteligente y entusiasta.
+- Hablas español rioplatense (Argentina) de forma natural ("vos", "che", etc.), pero mantienes un tono respetuoso.
+- Si te escriben, respondes escrito. Si te hablan, respondes escrito (el frontend maneja el audio).
 
-CONTEXTO DE PANTALLA:
-Recibirás un texto describiendo lo que el usuario ve. Úsalo para dar respuestas precisas.
-
-IMPORTANTE:
-- Escucha el audio del usuario y responde en texto.
-- Usa emojis de vez en cuando 🚴‍♂️🔥🏊‍♂️.
+CONTEXTO:
+Recibirás el contexto de lo que el usuario está viendo en pantalla. Úsalo para dar respuestas pertinentes.
 `;
 
 // --- HELPER: OPENAI CALLER ---
@@ -71,7 +72,7 @@ export const analyzeProductImage = async (base64Image: string): Promise<AIAnalys
             { 
                 role: "user", 
                 content: [
-                    { type: "text", text: "Analiza esta imagen y devuelve JSON con: title, category, brand, condition, description, suggestedPrice, tags." },
+                    { type: "text", text: "Analiza esta imagen. Devuelve JSON con: isSafe, safetyReason, title, category, brand, condition, description, suggestedPrice, tags." },
                     { type: "image_url", image_url: { url: `data:image/jpeg;base64,${cleanBase64}` } }
                 ] 
             }
@@ -80,7 +81,10 @@ export const analyzeProductImage = async (base64Image: string): Promise<AIAnalys
         const data = await callOpenAI(settings.openaiApiKey, settings.openaiModel || 'gpt-4o', messages, { type: "json_object" });
         const result = JSON.parse(data.choices[0].message.content);
 
-        // Normalize result
+        if (result.isSafe === false) {
+             throw new Error(`Imagen rechazada por moderación: ${result.safetyReason || 'Contenido inapropiado detectado.'}`);
+        }
+
         return {
             title: result.title || "Artículo Desconocido",
             category: (result.category as Category) || Category.OTHER,
@@ -89,12 +93,12 @@ export const analyzeProductImage = async (base64Image: string): Promise<AIAnalys
             description: result.description || "Sin descripción.",
             suggestedPrice: result.suggestedPrice || 0,
             tags: result.tags || [],
-            confidenceScore: 0.9
+            confidenceScore: 0.9,
+            isSafe: true
         };
 
     } else {
         // --- GEMINI IMPLEMENTATION (Default) ---
-        // Fallback to process.env if DB key is missing (for backward compat or dev)
         const apiKey = settings.geminiApiKey || process.env.API_KEY; 
         if (!apiKey) throw new Error("API Key de Gemini no configurada.");
 
@@ -105,7 +109,7 @@ export const analyzeProductImage = async (base64Image: string): Promise<AIAnalys
           contents: {
             parts: [
               { inlineData: { mimeType: "image/jpeg", data: cleanBase64 } },
-              { text: "Analiza esta imagen. Identifica el producto deportivo, marca, categoría, condición visual y sugiere un precio en USD. Genera un título y una descripción de venta atractiva en ESPAÑOL." }
+              { text: "Analiza esta imagen. Verifica seguridad ética y moral primero. Si es segura, identifica el producto deportivo." }
             ]
           },
           config: {
@@ -114,6 +118,8 @@ export const analyzeProductImage = async (base64Image: string): Promise<AIAnalys
             responseSchema: {
               type: Type.OBJECT,
               properties: {
+                isSafe: { type: Type.BOOLEAN },
+                safetyReason: { type: Type.STRING },
                 title: { type: Type.STRING },
                 category: { type: Type.STRING, enum: ["Cycling", "Running", "Swimming", "Triathlon", "Other"] },
                 brand: { type: Type.STRING },
@@ -123,12 +129,17 @@ export const analyzeProductImage = async (base64Image: string): Promise<AIAnalys
                 tags: { type: Type.ARRAY, items: { type: Type.STRING } },
                 confidenceScore: { type: Type.NUMBER }
               },
-              required: ["title", "category", "brand", "condition", "description", "suggestedPrice", "tags"]
+              required: ["isSafe", "title", "category", "brand", "condition", "description", "suggestedPrice", "tags"]
             }
           }
         });
 
         const result = JSON.parse(response.text || "{}");
+        
+        if (result.isSafe === false) {
+            throw new Error(`Imagen rechazada por moderación: ${result.safetyReason || 'Contenido inapropiado detectado.'}`);
+        }
+
         return {
           title: result.title || "Artículo Desconocido",
           category: (result.category as Category) || Category.OTHER,
@@ -137,55 +148,67 @@ export const analyzeProductImage = async (base64Image: string): Promise<AIAnalys
           description: result.description || "Sin descripción.",
           suggestedPrice: result.suggestedPrice || 0,
           tags: result.tags || [],
-          confidenceScore: result.confidenceScore || 0.5
+          confidenceScore: result.confidenceScore || 0.5,
+          isSafe: true
         };
     }
 
   } catch (error: any) {
     console.error("AI Analysis Failed:", error);
-    throw new Error(`Falló el análisis de IA (${provider}): ${error.message}`);
+    // Propagate the specific moderation error if it exists
+    throw error;
   }
 };
 
-export const chatWithTriBot = async (audioBase64: string, history: ChatMessage[], screenContext: string): Promise<string> => {
+export const chatWithTriBot = async (input: { type: 'audio' | 'text', content: string }, history: ChatMessage[], screenContext: string): Promise<string> => {
   const settings = await configService.getSettings();
   const provider = settings.aiProvider;
-  const cleanBase64 = audioBase64.split(',')[1] || audioBase64;
   
   try {
-      const recentHistory = history.slice(-3).map(h => `${h.sender === 'user' ? 'Usuario' : 'TriBot'}: ${h.text}`).join('\n');
+      const recentHistory = history.slice(-5).map(h => `${h.sender === 'user' ? 'Usuario' : 'TriBot'}: ${h.text}`).join('\n');
       const promptText = `
         CONTEXTO ACTUAL DE LA PANTALLA: ${screenContext}
         HISTORIAL RECIENTE: ${recentHistory}
-        INSTRUCCIÓN: Escucha (o lee) el input del usuario y responde.
+        
+        ${input.type === 'text' ? `PREGUNTA DEL USUARIO: ${input.content}` : 'INSTRUCCIÓN: El usuario envió un audio. Responde a lo que escuchas.'}
       `;
 
       if (provider === 'openai') {
-         // OpenAI Audio/Vision logic is complex via REST. 
-         // For ChatBot context, we will fallback to text-only if audio is passed, 
-         // OR we assume the user just wants text response. 
-         // *Simulated Audio Transcription for OpenAI*: Real implementation requires Whisper API.
-         // For now, we will fail gracefully or assume text input if we refactor.
-         // But TriBot sends AUDIO.
+         if (input.type === 'audio') {
+             return "TriBot con audio requiere configuración avanzada de OpenAI (Whisper). Por favor escribe tu consulta.";
+         }
          
-         // NOTE: Implementing OpenAI Whisper + Chat here requires 2 calls.
-         // To keep it simple: We return a placeholder message if they try audio with OpenAI without Whisper.
-         return "TriBot con audio requiere configuración avanzada de OpenAI (Whisper). Por ahora usa Gemini para audio.";
+         if (!settings.openaiApiKey) throw new Error("OpenAI API Key missing");
          
+         const messages = [
+            { role: "system", content: BOT_SYSTEM_INSTRUCTION },
+            { role: "user", content: promptText }
+         ];
+         
+         const data = await callOpenAI(settings.openaiApiKey, settings.openaiModel || 'gpt-4o', messages);
+         return data.choices[0].message.content;
+
       } else {
-        // --- GEMINI (Native Audio Support) ---
+        // --- GEMINI (Native Audio & Text) ---
         const apiKey = settings.geminiApiKey || process.env.API_KEY;
         if (!apiKey) throw new Error("API Key de Gemini no configurada.");
 
         const ai = new GoogleGenAI({ apiKey });
+        
+        const parts: any[] = [];
+        
+        // Add Audio Part if exists
+        if (input.type === 'audio') {
+            const cleanBase64 = input.content.split(',')[1] || input.content;
+            parts.push({ inlineData: { mimeType: "audio/wav", data: cleanBase64 } });
+        }
+        
+        // Add Text Part
+        parts.push({ text: promptText });
+
         const response = await ai.models.generateContent({
             model: settings.geminiModel || "gemini-2.5-flash",
-            contents: {
-                parts: [
-                    { inlineData: { mimeType: "audio/wav", data: cleanBase64 } },
-                    { text: promptText }
-                ]
-            },
+            contents: { parts },
             config: { systemInstruction: BOT_SYSTEM_INSTRUCTION }
         });
 
@@ -194,6 +217,6 @@ export const chatWithTriBot = async (audioBase64: string, history: ChatMessage[]
 
   } catch (error) {
     console.error("TriBot Error:", error);
-    return "Uy, se me cortó la conexión. Probá de nuevo.";
+    return "Uy, estoy teniendo problemas para conectar. ¿Me repetís?";
   }
 };

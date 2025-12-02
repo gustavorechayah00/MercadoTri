@@ -269,9 +269,89 @@ const getConditionLabel = (cond: string, t: any) => {
   return map[cond] || cond;
 };
 
-// --- Sub-Components ---
+// ... (Other components like LoginView, ConfigView, ProfileView remain the same) ...
+// For brevity, I am not repeating unchanged components here unless they need edits.
+// But UploadView needs edit.
 
-// 1. LOGIN VIEW
+// 3. UPLOAD VIEW (Updated)
+const UploadView = ({ onAnalysisComplete, onCancel, t }: { onAnalysisComplete: (data: AIAnalysisResult, imgs: string[]) => void, onCancel: () => void, t: any }) => {
+  const [analyzing, setAnalyzing] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const files = Array.from(e.target.files) as File[];
+      if (files.length > 10) {
+        alert(t.maxPhotos);
+        return;
+      }
+      setAnalyzing(true);
+      try {
+        const promises = files.map(file => {
+          return new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+          });
+        });
+        const base64Images = await Promise.all(promises);
+        const mainImage = base64Images[0];
+        const analysis = await analyzeProductImage(mainImage);
+        onAnalysisComplete(analysis, base64Images);
+      } catch (error: any) {
+        console.error(error);
+        // Show specific error (e.g., safety violation)
+        alert(error.message || t.analysisError);
+        setAnalyzing(false);
+      }
+    }
+  };
+
+  return (
+    <div className="max-w-xl mx-auto">
+      <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-8 text-center min-h-[400px] flex flex-col justify-center">
+        {analyzing ? (
+          <div className="py-12 animate-pulse">
+            <div className="mx-auto w-16 h-16 bg-orange-50 rounded-full flex items-center justify-center mb-6">
+              <i className="fa-solid fa-brain text-tri-orange text-2xl animate-bounce"></i>
+            </div>
+            <h3 className="text-xl font-bold text-gray-900 mb-2">{t.analyzingTitle}</h3>
+            <p className="text-gray-500">{t.analyzingDesc}</p>
+          </div>
+        ) : (
+          <div className="py-4">
+            <div className="mb-8">
+              <span className="inline-block p-4 rounded-full bg-orange-50 text-tri-orange mb-4 shadow-sm">
+                <i className="fa-solid fa-images text-3xl"></i>
+              </span>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">{t.uploadTitle}</h2>
+              <p className="text-gray-500 max-w-sm mx-auto leading-relaxed">
+                {t.uploadDesc}
+              </p>
+            </div>
+            <input type="file" accept="image/*" multiple className="hidden" ref={fileInputRef} onChange={handleFileChange} />
+            <div className="space-y-4 max-w-xs mx-auto">
+              <button 
+                onClick={() => fileInputRef.current?.click()}
+                className="w-full bg-tri-orange text-white font-bold py-4 rounded-xl shadow-lg shadow-orange-500/20 hover:shadow-orange-500/40 hover:bg-orange-600 transition transform hover:-translate-y-1"
+              >
+                <i className="fa-solid fa-upload mr-2"></i> {t.selectPhotosBtn}
+              </button>
+              <button onClick={onCancel} className="text-gray-400 text-sm hover:text-gray-600 transition w-full py-2">{t.cancel}</button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// ... (Rest of App.tsx remains largely same, just including here for XML completeness if needed, but only returning necessary changes)
+
+// I will assume other components are imported or present in the final file. 
+// Since I must return the full content of the file if I change it, I will paste the whole App.tsx but reusing the existing code for parts not changed.
+
 const LoginView = ({ onLoginSuccess, t, siteConfig }: { onLoginSuccess: (user: User) => void, t: any, siteConfig: SiteSettings }) => {
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
@@ -395,7 +475,6 @@ const LoginView = ({ onLoginSuccess, t, siteConfig }: { onLoginSuccess: (user: U
   );
 };
 
-// 7. CONFIG VIEW (ADMIN ONLY - Updated for AI)
 const ConfigView = ({ siteConfig, onUpdateConfig, t }: { siteConfig: SiteSettings, onUpdateConfig: (s: SiteSettings) => void, t: any }) => {
   const [formData, setFormData] = useState<SiteSettings>(siteConfig);
   const [logoFile, setLogoFile] = useState<string | null>(null);
@@ -536,7 +615,6 @@ const ConfigView = ({ siteConfig, onUpdateConfig, t }: { siteConfig: SiteSetting
 };
 
 
-// 2. PROFILE VIEW (Updated)
 const ProfileView = ({ user, t, onUpdateUser }: { user: User, t: any, onUpdateUser: (u: User) => void }) => {
   const [formData, setFormData] = useState({ name: user.name, whatsapp: user.whatsapp || '', phone: user.phone || '' });
   const [avatar, setAvatar] = useState(user.avatarUrl || '');
@@ -617,80 +695,6 @@ const ProfileView = ({ user, t, onUpdateUser }: { user: User, t: any, onUpdateUs
   );
 };
 
-// 3. UPLOAD VIEW
-const UploadView = ({ onAnalysisComplete, onCancel, t }: { onAnalysisComplete: (data: AIAnalysisResult, imgs: string[]) => void, onCancel: () => void, t: any }) => {
-  const [analyzing, setAnalyzing] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      const files = Array.from(e.target.files) as File[];
-      if (files.length > 10) {
-        alert(t.maxPhotos);
-        return;
-      }
-      setAnalyzing(true);
-      try {
-        const promises = files.map(file => {
-          return new Promise<string>((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result as string);
-            reader.onerror = reject;
-            reader.readAsDataURL(file);
-          });
-        });
-        const base64Images = await Promise.all(promises);
-        const mainImage = base64Images[0];
-        const analysis = await analyzeProductImage(mainImage);
-        onAnalysisComplete(analysis, base64Images);
-      } catch (error) {
-        console.error(error);
-        alert(t.analysisError);
-        setAnalyzing(false);
-      }
-    }
-  };
-
-  return (
-    <div className="max-w-xl mx-auto">
-      <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-8 text-center min-h-[400px] flex flex-col justify-center">
-        {analyzing ? (
-          <div className="py-12 animate-pulse">
-            <div className="mx-auto w-16 h-16 bg-orange-50 rounded-full flex items-center justify-center mb-6">
-              <i className="fa-solid fa-brain text-tri-orange text-2xl animate-bounce"></i>
-            </div>
-            <h3 className="text-xl font-bold text-gray-900 mb-2">{t.analyzingTitle}</h3>
-            <p className="text-gray-500">{t.analyzingDesc}</p>
-          </div>
-        ) : (
-          <div className="py-4">
-            <div className="mb-8">
-              <span className="inline-block p-4 rounded-full bg-orange-50 text-tri-orange mb-4 shadow-sm">
-                <i className="fa-solid fa-images text-3xl"></i>
-              </span>
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">{t.uploadTitle}</h2>
-              <p className="text-gray-500 max-w-sm mx-auto leading-relaxed">
-                {t.uploadDesc}
-              </p>
-            </div>
-            <input type="file" accept="image/*" multiple className="hidden" ref={fileInputRef} onChange={handleFileChange} />
-            <div className="space-y-4 max-w-xs mx-auto">
-              <button 
-                onClick={() => fileInputRef.current?.click()}
-                className="w-full bg-tri-orange text-white font-bold py-4 rounded-xl shadow-lg shadow-orange-500/20 hover:shadow-orange-500/40 hover:bg-orange-600 transition transform hover:-translate-y-1"
-              >
-                <i className="fa-solid fa-upload mr-2"></i> {t.selectPhotosBtn}
-              </button>
-              <button onClick={onCancel} className="text-gray-400 text-sm hover:text-gray-600 transition w-full py-2">{t.cancel}</button>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-};
-
-// 4. EDIT VIEW
 const EditView = ({ initialData, images: initialImages, onSave, onCancel, t, isEditing, onDelete }: any) => {
   const [formData, setFormData] = useState({
     title: initialData.title,
@@ -860,7 +864,6 @@ const EditView = ({ initialData, images: initialImages, onSave, onCancel, t, isE
   );
 };
 
-// 5. PRODUCT DETAIL VIEW
 const ProductDetailView = ({ product, onBack, t, user, onEdit, onDelete }: any) => {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const canEdit = user && (user.role === 'admin' || (user.role === 'seller' && user.id === product.userId));
@@ -951,7 +954,6 @@ const ProductDetailView = ({ product, onBack, t, user, onEdit, onDelete }: any) 
   );
 };
 
-// 6. USER MANAGEMENT VIEW (Updated with Edit Capability)
 const UserManagementView = ({ t, currentUser }: { t: any, currentUser: User | null }) => {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1250,7 +1252,7 @@ const App: React.FC = () => {
   const handleEditProduct = (product: Product) => {
     setAnalysisData({
       title: product.title, category: product.category, brand: product.brand, condition: product.condition,
-      description: product.description, suggestedPrice: product.price, tags: product.tags, confidenceScore: 1
+      description: product.description, suggestedPrice: product.price, tags: product.tags, confidenceScore: 1, isSafe: true
     });
     setUploadImages(product.imageUrls); setEditingId(product.id); setView('edit');
   };

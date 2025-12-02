@@ -39,6 +39,8 @@ export interface AIAnalysisResult {
   suggestedPrice: number;
   tags: string[];
   confidenceScore: number;
+  isSafe: boolean;
+  safetyReason?: string;
 }
 
 export type UserRole = 'admin' | 'seller' | 'buyer';
