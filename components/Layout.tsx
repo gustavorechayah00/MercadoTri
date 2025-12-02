@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { User, SiteSettings } from '../types';
 
@@ -21,18 +20,38 @@ export const Layout: React.FC<LayoutProps> = ({
   const canSell = user && (user.role === 'admin' || user.role === 'seller');
   const isAdmin = user && user.role === 'admin';
 
+  // Helper to render logo text dynamically or default
+  const renderLogoText = () => {
+    const name = siteConfig.siteName || 'Mercado Tri';
+    // Split name to colorize the last part if it matches "Tri" or similar, otherwise just render
+    const parts = name.split(' ');
+    const firstPart = parts[0];
+    const rest = parts.slice(1).join(' ');
+
+    return (
+      <span className="text-3xl md:text-4xl font-sport font-bold tracking-tight text-slate-900 uppercase leading-none">
+        {firstPart}
+        {rest && (
+          <span className="bg-gradient-to-r from-tri-blue via-tri-green to-tri-orange text-transparent bg-clip-text ml-1">
+            {rest}
+          </span>
+        )}
+      </span>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-tri-light flex flex-col font-sans">
       {/* Top Navbar */}
       <nav className="bg-white/95 backdrop-blur-md sticky top-0 z-50 border-b border-gray-200 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center cursor-pointer group space-x-2" onClick={() => onNavigate('marketplace')}>
+          <div className="flex items-center justify-between h-20">
+            <div className="flex items-center cursor-pointer group space-x-3" onClick={() => onNavigate('marketplace')}>
               {siteConfig.logoUrl ? (
-                <img src={siteConfig.logoUrl} alt="Logo" className="w-10 h-10 object-contain" />
+                <img src={siteConfig.logoUrl} alt="Logo" className="w-12 h-12 object-contain" />
               ) : (
-                /* Fallback SVG Logo if no custom logo uploaded */
-                <svg className="w-10 h-10" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                /* Fallback SVG Logo */
+                <svg className="w-12 h-12 transform group-hover:scale-105 transition-transform" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M50 15 C65 15 80 25 85 40 C88 48 85 55 80 60 L 50 25 L 50 15 Z" fill="#06B6D4" />
                   <path d="M45 20 C35 30 35 45 40 55 L 85 40 C 80 25 65 15 45 20 Z" fill="#06B6D4" fillOpacity="0.8"/>
                   <path d="M20 70 C20 50 35 35 50 35 L 40 85 C 30 80 20 75 20 70 Z" fill="#84CC16" />
@@ -40,10 +59,10 @@ export const Layout: React.FC<LayoutProps> = ({
                   <circle cx="50" cy="55" r="8" fill="white" />
                 </svg>
               )}
-              <div className="flex flex-col justify-center">
-                <span className="text-xl font-bold leading-none tracking-tight text-gray-900">
-                  {siteConfig.siteName.split(' ')[0]}
-                  <span className="text-tri-blue">{siteConfig.siteName.split(' ').slice(1).join(' ')}</span>
+              <div className="flex flex-col justify-center -space-y-1">
+                {renderLogoText()}
+                <span className="text-xs md:text-sm font-sport text-gray-500 uppercase tracking-wide leading-none hidden sm:block">
+                  {siteConfig.siteDescription.slice(0, 50)}{siteConfig.siteDescription.length > 50 ? '...' : ''}
                 </span>
               </div>
             </div>

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Layout } from './components/Layout';
 import { ProductCard } from './components/ProductCard';
@@ -301,15 +300,19 @@ const LoginView = ({ onLoginSuccess, t, siteConfig }: { onLoginSuccess: (user: U
     }
   };
 
+  const nameParts = siteConfig.siteName.split(' ');
+  const firstPart = nameParts[0];
+  const restPart = nameParts.slice(1).join(' ');
+
   return (
     <div className="flex flex-col items-center justify-center min-h-[70vh]">
       <div className="w-full max-w-md bg-white p-8 rounded-2xl shadow-xl border border-gray-100">
         <div className="text-center mb-8">
           <div className="flex justify-center mb-4">
              {siteConfig.logoUrl ? (
-                <img src={siteConfig.logoUrl} className="w-20 h-20 object-contain" alt="Logo" />
+                <img src={siteConfig.logoUrl} className="w-24 h-24 object-contain" alt="Logo" />
              ) : (
-                <svg className="w-20 h-20" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <svg className="w-24 h-24" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M50 15 C65 15 80 25 85 40 C88 48 85 55 80 60 L 50 25 L 50 15 Z" fill="#06B6D4" />
                   <path d="M45 20 C35 30 35 45 40 55 L 85 40 C 80 25 65 15 45 20 Z" fill="#06B6D4" fillOpacity="0.8"/>
                   <path d="M20 70 C20 50 35 35 50 35 L 40 85 C 30 80 20 75 20 70 Z" fill="#84CC16" />
@@ -318,8 +321,9 @@ const LoginView = ({ onLoginSuccess, t, siteConfig }: { onLoginSuccess: (user: U
                 </svg>
              )}
           </div>
-          <h2 className="text-2xl font-bold text-gray-900">
-             {siteConfig.siteName.split(' ')[0]} <span className="text-tri-blue">{siteConfig.siteName.split(' ').slice(1).join(' ')}</span>
+          <h2 className="text-4xl font-sport font-bold tracking-tight text-gray-900 uppercase leading-none">
+             {firstPart}
+             {restPart && <span className="bg-gradient-to-r from-tri-blue via-tri-green to-tri-orange text-transparent bg-clip-text ml-2">{restPart}</span>}
           </h2>
           <p className="text-gray-500 text-sm mt-2 font-bold tracking-wider">{siteConfig.siteDescription.slice(0, 30)}...</p>
           <p className="text-gray-400 text-xs mt-1">{isSignUp ? t.signUpTitle : t.signInTitle}</p>
@@ -1362,18 +1366,15 @@ const App: React.FC = () => {
       case 'marketplace':
         return (
           <div className="space-y-6">
-            <div className="text-center py-6 bg-white rounded-xl shadow-sm border border-gray-100 mb-6 relative overflow-hidden">
-                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-tri-blue via-tri-green to-tri-orange"></div>
-                <h1 className="text-3xl font-bold text-gray-900 mb-2">{siteConfig.siteName}</h1>
-                <p className="text-gray-500 max-w-lg mx-auto">{siteConfig.siteDescription}</p>
-            </div>
+            {/* Removed Hero Banner Section as requested */}
 
             {/* Marketplace Filters */}
             <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col gap-4">
                <div className="flex flex-col md:flex-row gap-4">
-                    <div className="relative flex-1">
-                        <i className="fa-solid fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
-                        <input type="text" placeholder={t.searchPlaceholder} className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-tri-orange bg-white text-gray-900" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                    <div className="relative flex-1 group">
+                        <i className="fa-solid fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 group-focus-within:text-tri-orange transition-colors"></i>
+                        <div className="absolute inset-0 rounded-lg bg-gradient-to-r from-tri-blue via-tri-green to-tri-orange p-[2px] opacity-0 group-focus-within:opacity-100 transition-opacity pointer-events-none"></div>
+                        <input type="text" placeholder={t.searchPlaceholder} className="relative w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-transparent bg-white text-gray-900" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                     </div>
                     <div className="flex space-x-2 w-full md:w-auto">
                          <div className="relative flex-1 md:w-28"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">$</span><input type="number" placeholder={t.minPrice} className="w-full pl-6 pr-2 py-3 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-tri-orange" value={priceMin} onChange={(e) => setPriceMin(e.target.value)} /></div>
