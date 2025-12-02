@@ -5,7 +5,7 @@ import { ProductCard } from './components/ProductCard';
 import { TriBot } from './components/TriBot'; 
 import { authService, productService, adminService, configService } from './services/mockBackend';
 import { analyzeProductImage, generateShopName } from './services/geminiService';
-import { Product, User, Category, Condition, AIAnalysisResult, UserRole, SiteSettings, AIProvider } from './types';
+import { Product, User, Category, Condition, AIAnalysisResult, UserRole, SiteSettings, AIProvider, ShopSummary } from './types';
 
 // --- Translation Dictionary ---
 const translations = {
@@ -134,6 +134,9 @@ const translations = {
     sortPriceHigh: 'Precio: Mayor a Menor',
     filterTitle: 'Filtros',
     clearFilters: 'Limpiar',
+    featuredShops: 'Tiendas Destacadas',
+    viewShop: 'Ver Tienda',
+    productsCount: 'productos',
 
     // Admin / Actions
     editAction: 'Editar',
@@ -267,6 +270,9 @@ const translations = {
     sortPriceHigh: 'Price: High to Low',
     filterTitle: 'Filtros',
     clearFilters: 'Clear',
+    featuredShops: 'Featured Shops',
+    viewShop: 'View Shop',
+    productsCount: 'products',
 
     // Admin / Actions
     editAction: 'Edit',
@@ -476,9 +482,6 @@ const MyShopView = ({ user, t, onViewProduct }: { user: User, t: any, onViewProd
 
 // ... (Existing components: UploadView, LoginView, ConfigView, ProfileView)
 // NOTE: I am keeping existing components and just appending the new logic in Main App
-
-// 3. UPLOAD VIEW (Existing - No changes needed, logic handles redirect)
-// ...
 
 const UploadView = ({ onAnalysisComplete, onCancel, t }: { onAnalysisComplete: (data: AIAnalysisResult, imgs: string[]) => void, onCancel: () => void, t: any }) => {
   const [analyzing, setAnalyzing] = useState(false);
@@ -758,12 +761,6 @@ const EditView = ({ initialData, images: initialImages, onSave, onCancel, t, isE
 // (Skipping to App component to implement new routing)
 
 const LoginView = ({ onLoginSuccess, t, siteConfig, initialError }: { onLoginSuccess: (user: User) => void, t: any, siteConfig: SiteSettings, initialError?: string }) => {
-    // ... (Existing Login Logic)
-    // Redefining just for context, usually I would keep it separate but since I am updating App.tsx whole file structure in previous prompts, I assume context is known.
-    // I will just stub it to focus on App logic changes for brevity if allowed, but to be safe I will just use what I wrote before.
-    // Actually, I should just update the App component return.
-    
-    // REUSING PREVIOUS LOGIN VIEW CODE FROM CONTEXT TO ENSURE IT WORKS
     const [isSignUp, setIsSignUp] = useState(false);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -816,7 +813,17 @@ const LoginView = ({ onLoginSuccess, t, siteConfig, initialError }: { onLoginSuc
                     <p className="text-gray-400 text-xs mt-1">{isSignUp ? t.signUpTitle : t.signInTitle}</p>
                  </div>
                  
-                 {error && <div className="mb-6 bg-red-50 border border-red-100 rounded-lg p-3 text-red-700 text-sm">{error}</div>}
+                 {error && (
+                    <div className="mb-6 bg-red-50 border border-red-100 rounded-lg p-4 text-red-700 text-sm">
+                        <div className="font-bold flex items-center mb-1"><i className="fa-solid fa-circle-exclamation mr-2"></i> Error de Autenticación</div>
+                        <p>{error}</p>
+                        {error.includes("getting user profile") && (
+                            <div className="mt-2 text-xs text-red-600 bg-red-100 p-2 rounded">
+                                <strong>Github Tip:</strong> This usually means you are using a "GitHub App" instead of an "OAuth App". Please create a new <strong>OAuth App</strong> in GitHub Developer Settings.
+                            </div>
+                        )}
+                    </div>
+                 )}
 
                  <div className="space-y-3 mb-4">
                     <button type="button" onClick={handleGoogleLogin} className="w-full bg-white text-gray-700 font-bold py-3.5 rounded-xl border border-gray-200 shadow-sm flex items-center justify-center"><i className="fa-brands fa-google text-red-500 mr-2 text-xl"></i> {t.googleLogin}</button>
@@ -864,6 +871,7 @@ const App: React.FC = () => {
   const [view, setView] = useState('marketplace'); 
   const [user, setUser] = useState<User | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
+  const [shops, setShops] = useState<ShopSummary[]>([]);
   const [productsLoading, setProductsLoading] = useState(true);
   
   // Filters...
@@ -873,6 +881,9 @@ const App: React.FC = () => {
   const [priceMin, setPriceMin] = useState('');
   const [priceMax, setPriceMax] = useState('');
   
+  // Shop Filter (for Marketplace)
+  const [selectedShopFilter, setSelectedShopFilter] = useState<string | null>(null);
+
   // Inventory filters...
   const [invSearchTerm, setInvSearchTerm] = useState('');
   const [invStatusFilter, setInvStatusFilter] = useState('All');
@@ -898,6 +909,7 @@ const App: React.FC = () => {
         const u = await (authService as any).getSessionUser();
         if(u) setUser(u);
         loadProducts();
+        loadShops();
     };
     init();
   }, []);
@@ -909,6 +921,13 @@ const App: React.FC = () => {
           setProducts(p);
       } catch(e) { console.error(e); }
       finally { setProductsLoading(false); }
+  };
+
+  const loadShops = async () => {
+      try {
+          const s = await productService.getFeaturedShops();
+          setShops(s);
+      } catch(e) { console.error(e); }
   };
 
   const handleLogout = async () => { await authService.logout(); setUser(null); setView('marketplace'); };
@@ -954,6 +973,10 @@ const App: React.FC = () => {
   const filteredProducts = products.filter(p => {
       // Exclude drafts and sold items from marketplace
       if (p.status !== 'published') return false;
+      
+      // Shop Filter
+      if (selectedShopFilter && p.userId !== selectedShopFilter) return false;
+
       const search = searchTerm.toLowerCase();
       return (p.title.toLowerCase().includes(search) || p.brand.toLowerCase().includes(search)) &&
              (selectedCategory === 'All' || p.category === selectedCategory) &&
@@ -981,13 +1004,11 @@ const App: React.FC = () => {
           case 'config': return <ConfigView siteConfig={siteConfig} onUpdateConfig={setSiteConfig} t={t} />;
           case 'profile': return <ProfileView user={user} t={t} onUpdateUser={setUser} getRoleLabel={(r:string)=>getRoleLabel(r,t)} />;
           
-          // NEW VIEWS
           case 'shop-config': return user ? <ShopConfigView user={user} t={t} onShopCreated={handleShopCreated} /> : null;
           case 'my-shop': return user ? <MyShopView user={user} t={t} onViewProduct={p => { setSelectedProduct(p); setView('product-detail'); }} /> : null;
 
           case 'inventory': 
              // ... (Inventory logic reused from previous) ...
-             // Simplified for brevity in this output, but logic is "Admin sees all, Seller sees own"
              const myProds = user?.role === 'admin' ? products : products.filter(p => p.userId === user?.id);
              return (
                  <div className="space-y-4">
@@ -996,7 +1017,6 @@ const App: React.FC = () => {
                          {selectedInventoryItems.size > 0 && <button onClick={handleBulkDelete} className="text-red-600 font-bold">{t.deleteSelected}</button>}
                          <button onClick={() => setView('upload')} className="bg-tri-orange text-white px-4 py-2 rounded font-bold">New</button>
                      </div>
-                     {/* List/Grid toggles & items... */}
                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                          {myProds.map(p => <ProductCard key={p.id} product={p} onClick={() => { setSelectedProduct(p); setView('product-detail'); }} categoryLabel={getCategoryLabel(p.category, t)} showStatus />)}
                      </div>
@@ -1006,22 +1026,61 @@ const App: React.FC = () => {
           case 'marketplace':
           default:
              return (
-                 <div className="space-y-6">
+                 <div className="space-y-8 pb-12">
                      {/* Filters UI ... */}
-                     <div className="bg-white p-4 rounded-xl border border-gray-200 flex gap-4 flex-wrap">
+                     <div className="bg-white p-4 rounded-xl border border-gray-200 flex gap-4 flex-wrap items-center">
                         <input className="flex-1 border p-2 rounded bg-white" placeholder={t.searchPlaceholder} value={searchTerm} onChange={e=>setSearchTerm(e.target.value)} />
-                        {/* Categories ... */}
                         <div className="flex gap-2 overflow-x-auto">
                             <button onClick={()=>setSelectedCategory('All')} className={`px-4 py-2 rounded-full border ${selectedCategory==='All'?'bg-black text-white':'bg-white'}`}>{t.anyCategory}</button>
                             {Object.values(Category).map(c => <button key={c} onClick={()=>setSelectedCategory(c)} className={`px-4 py-2 rounded-full border ${selectedCategory===c?'bg-black text-white':'bg-white'}`}>{getCategoryLabel(c, t)}</button>)}
                         </div>
+                        {selectedShopFilter && (
+                           <button onClick={() => setSelectedShopFilter(null)} className="bg-orange-100 text-tri-orange px-4 py-2 rounded-full flex items-center gap-2 font-bold hover:bg-orange-200">
+                               <i className="fa-solid fa-store"></i> Filtro Tienda Activado <i className="fa-solid fa-times"></i>
+                           </button>
+                        )}
                      </div>
                      
                      {/* Products */}
                      {productsLoading ? <div className="text-center py-10">Loading...</div> : 
                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
-                         {sortedMarketplace.map(p => <ProductCard key={p.id} product={p} onClick={() => { setSelectedProduct(p); setView('product-detail'); }} categoryLabel={getCategoryLabel(p.category, t)} />)}
+                         {sortedMarketplace.length > 0 ? (
+                             sortedMarketplace.map(p => <ProductCard key={p.id} product={p} onClick={() => { setSelectedProduct(p); setView('product-detail'); }} categoryLabel={getCategoryLabel(p.category, t)} />)
+                         ) : (
+                             <div className="col-span-full text-center py-12 text-gray-400">
+                                 No se encontraron productos.
+                             </div>
+                         )}
                      </div>}
+
+                     {/* Featured Shops Section */}
+                     {shops.length > 0 && !selectedShopFilter && (
+                         <div className="mt-12 border-t border-gray-100 pt-8">
+                             <h3 className="text-2xl font-sport font-bold text-gray-900 uppercase tracking-wide mb-6 flex items-center">
+                                 <i className="fa-solid fa-store text-tri-orange mr-3"></i> {t.featuredShops}
+                             </h3>
+                             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                                 {shops.map(shop => (
+                                     <div key={shop.id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col items-center text-center hover:shadow-md transition group">
+                                         <div className="w-16 h-16 rounded-full bg-gray-50 mb-3 overflow-hidden border border-gray-100 group-hover:border-tri-orange transition">
+                                             {shop.avatarUrl ? <img src={shop.avatarUrl} className="w-full h-full object-cover"/> : <i className="fa-solid fa-store text-2xl text-gray-300 mt-4"></i>}
+                                         </div>
+                                         <h4 className="font-bold text-gray-900 text-sm mb-1">{shop.name}</h4>
+                                         <p className="text-xs text-gray-500 mb-3">{shop.productCount} {t.productsCount}</p>
+                                         <button 
+                                             onClick={() => {
+                                                 setSelectedShopFilter(shop.id);
+                                                 window.scrollTo({ top: 0, behavior: 'smooth' });
+                                             }}
+                                             className="w-full bg-gray-50 text-gray-600 text-xs font-bold py-2 rounded-lg hover:bg-tri-orange hover:text-white transition"
+                                         >
+                                             {t.viewShop}
+                                         </button>
+                                     </div>
+                                 ))}
+                             </div>
+                         </div>
+                     )}
                  </div>
              );
       }

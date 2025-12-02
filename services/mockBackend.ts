@@ -1,5 +1,5 @@
 
-import { Product, User, Category, Condition, UserRole, SiteSettings, AIProvider } from "../types";
+import { Product, User, Category, Condition, UserRole, SiteSettings, AIProvider, ShopSummary } from "../types";
 import { supabase } from "./supabaseClient";
 
 /**
@@ -421,7 +421,6 @@ export const productService = {
   },
   
   getShopStats: async (userId: string): Promise<{ total: number, active: number, sold: number, revenue: number }> => {
-      // Calculate basic stats for the shop dashboard
       const { data, error } = await supabase
         .from('products')
         .select('id, status, price')
@@ -435,6 +434,48 @@ export const productService = {
       const revenue = data.filter(p => p.status === 'sold').reduce((sum, p) => sum + (p.price || 0), 0);
       
       return { total, active, sold, revenue };
+  },
+
+  getFeaturedShops: async (): Promise<ShopSummary[]> => {
+      try {
+        // 1. Fetch Sellers with Shops
+        const { data: sellers, error: sellerError } = await supabase
+          .from('profiles')
+          .select('id, shop_name, avatar_url')
+          .not('shop_name', 'is', null);
+
+        if (sellerError) throw sellerError;
+        if (!sellers || sellers.length === 0) return [];
+
+        // 2. Fetch Product Counts (Simple aggregation)
+        // We get all published products to count them. In production, use RPC or .count() per seller.
+        const { data: products } = await supabase
+          .from('products')
+          .select('user_id')
+          .eq('status', 'published');
+          
+        const productMap: Record<string, number> = {};
+        products?.forEach(p => {
+            productMap[p.user_id] = (productMap[p.user_id] || 0) + 1;
+        });
+
+        // 3. Map to ShopSummary
+        const shops: ShopSummary[] = sellers
+            .map(s => ({
+                id: s.id,
+                name: s.shop_name,
+                avatarUrl: s.avatar_url,
+                productCount: productMap[s.id] || 0
+            }))
+            .filter(s => s.productCount > 0) // Only shops with products
+            .sort((a, b) => b.productCount - a.productCount); // Most active first
+
+        return shops;
+
+      } catch (e) {
+          console.error("Error fetching shops", e);
+          return [];
+      }
   },
 
   create: async (productData: Omit<Product, 'id' | 'createdAt' | 'userId'>): Promise<Product> => {

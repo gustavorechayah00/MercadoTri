@@ -57,6 +57,13 @@ export interface User {
   shopName?: string;
 }
 
+export interface ShopSummary {
+  id: string; // This is the User ID of the seller
+  name: string;
+  avatarUrl?: string;
+  productCount: number;
+}
+
 export interface ChatMessage {
   id: string;
   sender: 'user' | 'bot';
