@@ -10,7 +10,7 @@ interface TriBotProps {
 export const TriBot: React.FC<TriBotProps> = ({ currentContext }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([
-    { id: '1', sender: 'bot', text: '¡Hola! 🤖 Soy TriBot, tu asistente de IA. ¿Buscas algo específico o necesitas ayuda con equipamiento?', timestamp: Date.now() }
+    { id: '1', sender: 'bot', text: '¡Hola! 🤖 Soy TriBot, tu asistente de IA. ¿En qué puedo ayudarte hoy?', timestamp: Date.now() }
   ]);
   const [inputValue, setInputValue] = useState('');
   const [isRecording, setIsRecording] = useState(false);
@@ -102,22 +102,35 @@ export const TriBot: React.FC<TriBotProps> = ({ currentContext }) => {
     setIsProcessing(false);
   };
 
-  // Custom Icon: Face with Swim Cap and Goggles
+  // Custom Icon: Modern AI Robot
   const TriBotIcon = () => (
     <svg viewBox="0 0 100 100" className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
-      {/* Swim Cap */}
-      <path d="M20 50 C20 15 80 15 80 50 L 80 60 L 20 60 Z" fill="#06B6D4" /> 
-      {/* Face */}
-      <path d="M25 60 L 75 60 L 75 75 C 75 90 25 90 25 75 Z" fill="#FFD700" /> {/* Skin tone (Goldish for contrast) */}
-      {/* Goggles Strap */}
-      <rect x="18" y="55" width="64" height="4" fill="#333" />
-      {/* Goggles Lenses */}
-      <ellipse cx="35" cy="58" rx="12" ry="8" fill="#333" stroke="#fff" strokeWidth="2" />
-      <ellipse cx="65" cy="58" rx="12" ry="8" fill="#333" stroke="#fff" strokeWidth="2" />
-      {/* Nose */}
-      <path d="M50 70 L 48 78 L 52 78 Z" fill="#CCAC00" />
-      {/* Mouth */}
-      <path d="M40 85 Q 50 90 60 85" stroke="#333" strokeWidth="2" fill="none" />
+      {/* Robot Head Shape */}
+      <rect x="20" y="25" width="60" height="55" rx="15" fill="#EDF2F7" stroke="#06B6D4" strokeWidth="2" />
+      
+      {/* Screen/Face Area */}
+      <rect x="28" y="38" width="44" height="30" rx="8" fill="#1A202C" />
+      
+      {/* Glowing Eyes */}
+      <circle cx="40" cy="50" r="4" fill="#06B6D4">
+        <animate attributeName="opacity" values="0.5;1;0.5" duration="2s" repeatCount="indefinite" />
+      </circle>
+      <circle cx="60" cy="50" r="4" fill="#06B6D4">
+        <animate attributeName="opacity" values="0.5;1;0.5" duration="2s" repeatCount="indefinite" />
+      </circle>
+      
+      {/* Mouth Line */}
+      <path d="M45 58 Q 50 60 55 58" stroke="#06B6D4" strokeWidth="2" strokeLinecap="round" fill="none" />
+      
+      {/* Antenna */}
+      <line x1="50" y1="25" x2="50" y2="15" stroke="#06B6D4" strokeWidth="3" />
+      <circle cx="50" cy="12" r="5" fill="#F97316">
+         <animate attributeName="fill" values="#F97316;#FFD700;#F97316" duration="3s" repeatCount="indefinite" />
+      </circle>
+      
+      {/* Ears/Side Bolts */}
+      <rect x="15" y="45" width="5" height="15" rx="2" fill="#06B6D4" />
+      <rect x="80" y="45" width="5" height="15" rx="2" fill="#06B6D4" />
     </svg>
   );
 

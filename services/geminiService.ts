@@ -29,8 +29,9 @@ Tienes acceso al INVENTARIO ACTUAL de la tienda (listado abajo).
 - Eres experto técnico: puedes explicar diferencias entre bicis de ruta y triatlón, tipos de neoprenos, etc.
 
 PERSONALIDAD:
-- Entusiasta, deportivo y servicial.
-- Hablas español rioplatense (Argentina) natural ("che", "fijate", "nave").
+- Profesional, objetivo y servicial.
+- Hablas español neutro, claro y sin modismos regionales.
+- Evita el uso de jerga local o excesiva informalidad.
 `;
 
 // --- HELPER: OPENAI CALLER ---
@@ -227,11 +228,11 @@ export const chatWithTriBot = async (input: { type: 'audio' | 'text', content: s
             config: { systemInstruction: BOT_SYSTEM_INSTRUCTION }
         });
 
-        return response.text || "No entendí, ¿podés repetir?";
+        return response.text || "No entendí, ¿podrías repetir?";
       }
 
   } catch (error) {
     console.error("TriBot Error:", error);
-    return "Uy, estoy teniendo problemas para conectar con la base de datos o el cerebro digital. ¿Me repetís?";
+    return "Estoy teniendo problemas para conectar con la base de datos. Por favor intenta nuevamente.";
   }
 };
