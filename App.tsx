@@ -148,7 +148,18 @@ const translations = {
     deleteAction: 'Eliminar',
     confirmDelete: '¿Estás seguro que deseas eliminar este producto? Esta acción no se puede deshacer.',
     confirmBulkDelete: '¿Estás seguro que deseas eliminar los productos seleccionados?',
-    deletedSuccess: 'Producto eliminado correctamente.'
+    deletedSuccess: 'Producto eliminado correctamente.',
+
+    // Config
+    configTitle: 'Configuración del Sitio',
+    siteNameLabel: 'Nombre del Sitio',
+    siteDescLabel: 'Descripción del Sitio',
+    logoUrlLabel: 'URL del Logo (o subir)',
+    aiConfigTitle: 'Configuración de Inteligencia Artificial',
+    aiProviderLabel: 'Proveedor de IA',
+    apiKeyLabel: 'API Key',
+    modelLabel: 'Modelo',
+    saveConfig: 'Guardar Configuración'
   },
   en: {
     navShop: 'Market',
@@ -289,7 +300,18 @@ const translations = {
     deleteAction: 'Delete',
     confirmDelete: 'Are you sure you want to delete this product? This action cannot be undone.',
     confirmBulkDelete: 'Are you sure you want to delete the selected products?',
-    deletedSuccess: 'Product deleted successfully.'
+    deletedSuccess: 'Product deleted successfully.',
+
+    // Config
+    configTitle: 'Site Configuration',
+    siteNameLabel: 'Site Name',
+    siteDescLabel: 'Site Description',
+    logoUrlLabel: 'Logo URL (or upload)',
+    aiConfigTitle: 'AI Configuration',
+    aiProviderLabel: 'AI Provider',
+    apiKeyLabel: 'API Key',
+    modelLabel: 'Model',
+    saveConfig: 'Save Configuration'
   }
 };
 
@@ -561,9 +583,6 @@ const MyShopView = ({ user, t, onViewProduct, onEditShop }: { user: User, t: any
     );
 };
 
-// ... (Existing components: UploadView, LoginView, ConfigView, ProfileView)
-// NOTE: I am keeping existing components and just appending the new logic in Main App
-
 const UploadView = ({ onAnalysisComplete, onCancel, t }: { onAnalysisComplete: (data: AIAnalysisResult, imgs: string[]) => void, onCancel: () => void, t: any }) => {
   const [analyzing, setAnalyzing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -636,9 +655,6 @@ const UploadView = ({ onAnalysisComplete, onCancel, t }: { onAnalysisComplete: (
   );
 };
 
-// ... LoginView, ConfigView, ProfileView, EditView, ProductDetailView ...
-// (These remain largely the same, I will paste EditView to ensure 'sold' status is handled)
-
 const EditView = ({ initialData, images: initialImages, onSave, onCancel, t, isEditing, onDelete }: any) => {
   const [formData, setFormData] = useState({
     title: initialData.title,
@@ -648,7 +664,7 @@ const EditView = ({ initialData, images: initialImages, onSave, onCancel, t, isE
     condition: initialData.condition,
     price: initialData.suggestedPrice || initialData.price || 0,
     currency: initialData.currency || 'ARS',
-    tags: initialData.tags.join(', '),
+    tags: Array.isArray(initialData.tags) ? initialData.tags.join(', ') : initialData.tags || '',
     status: initialData.status || 'published'
   });
   const [localImages, setLocalImages] = useState<string[]>(initialImages);
@@ -657,7 +673,6 @@ const EditView = ({ initialData, images: initialImages, onSave, onCancel, t, isE
 
   useEffect(() => { setLocalImages(initialImages); }, [initialImages]);
 
-  // ... (image handling code same as before) ...
   const handleAddImages = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const files = Array.from(e.target.files) as File[];
@@ -696,7 +711,6 @@ const EditView = ({ initialData, images: initialImages, onSave, onCancel, t, isE
 
   return (
     <div className="max-w-4xl mx-auto bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden flex flex-col">
-       {/* ... Header and Image Column same as before ... */}
        <div className="bg-gray-50 p-6 border-b border-gray-200">
         <h2 className="text-xl font-bold text-gray-900">{isEditing ? t.editTitle : t.reviewTitle}</h2>
         <p className="text-gray-500 text-sm">{isEditing ? t.editDesc : t.reviewDesc}</p>
@@ -838,8 +852,324 @@ const EditView = ({ initialData, images: initialImages, onSave, onCancel, t, isE
   );
 };
 
-// ... ProductDetailView, UserManagementView ... 
-// (Skipping to App component to implement new routing)
+const ConfigView = ({ siteConfig, onUpdateConfig, t }: { siteConfig: SiteSettings, onUpdateConfig: (s: SiteSettings) => void, t: any }) => {
+    const [config, setConfig] = useState<SiteSettings>(siteConfig);
+    const [logoBase64, setLogoBase64] = useState<string | undefined>(undefined);
+    const [saving, setSaving] = useState(false);
+    
+    const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            const reader = new FileReader();
+            reader.onload = (ev) => setLogoBase64(ev.target?.result as string);
+            reader.readAsDataURL(e.target.files[0]);
+        }
+    };
+
+    const handleSave = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setSaving(true);
+        try {
+            await configService.updateSettings(config, logoBase64);
+            onUpdateConfig({...config, logoUrl: logoBase64 || config.logoUrl});
+            alert("Configuración guardada.");
+        } catch (e) {
+            console.error(e);
+            alert("Error guardando configuración.");
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    return (
+        <div className="max-w-2xl mx-auto bg-white p-8 rounded-2xl shadow-xl border border-gray-100">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">{t.configTitle}</h2>
+            <form onSubmit={handleSave} className="space-y-6">
+                <div>
+                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">{t.siteNameLabel}</label>
+                    <input className="w-full px-4 py-2 border rounded-lg bg-white" value={config.siteName} onChange={e => setConfig({...config, siteName: e.target.value})} />
+                </div>
+                <div>
+                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">{t.siteDescLabel}</label>
+                    <input className="w-full px-4 py-2 border rounded-lg bg-white" value={config.siteDescription} onChange={e => setConfig({...config, siteDescription: e.target.value})} />
+                </div>
+                <div>
+                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">{t.logoUrlLabel}</label>
+                    <div className="flex items-center gap-4">
+                        <input type="file" onChange={handleLogoChange} className="text-sm" accept="image/*" />
+                        {(logoBase64 || config.logoUrl) && <img src={logoBase64 || config.logoUrl} className="h-10 w-10 object-contain" />}
+                    </div>
+                </div>
+                
+                <div className="border-t pt-6 mt-6">
+                    <h3 className="text-lg font-bold text-gray-900 mb-4">{t.aiConfigTitle}</h3>
+                    <div className="grid grid-cols-1 gap-4">
+                        <div>
+                            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">{t.aiProviderLabel}</label>
+                            <select 
+                                className="w-full px-4 py-2 border rounded-lg bg-white"
+                                value={config.aiProvider}
+                                onChange={e => setConfig({...config, aiProvider: e.target.value as AIProvider})}
+                            >
+                                <option value="gemini">Google Gemini</option>
+                                <option value="openai">OpenAI (GPT-4)</option>
+                            </select>
+                        </div>
+                        {config.aiProvider === 'gemini' ? (
+                            <>
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Gemini {t.apiKeyLabel}</label>
+                                    <input type="password" className="w-full px-4 py-2 border rounded-lg bg-white" value={config.geminiApiKey || ''} onChange={e => setConfig({...config, geminiApiKey: e.target.value})} placeholder="AIzaSy..." />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Gemini {t.modelLabel}</label>
+                                    <input className="w-full px-4 py-2 border rounded-lg bg-white" value={config.geminiModel || 'gemini-2.5-flash'} onChange={e => setConfig({...config, geminiModel: e.target.value})} />
+                                </div>
+                            </>
+                        ) : (
+                            <>
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">OpenAI {t.apiKeyLabel}</label>
+                                    <input type="password" className="w-full px-4 py-2 border rounded-lg bg-white" value={config.openaiApiKey || ''} onChange={e => setConfig({...config, openaiApiKey: e.target.value})} placeholder="sk-..." />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">OpenAI {t.modelLabel}</label>
+                                    <input className="w-full px-4 py-2 border rounded-lg bg-white" value={config.openaiModel || 'gpt-4o'} onChange={e => setConfig({...config, openaiModel: e.target.value})} />
+                                </div>
+                            </>
+                        )}
+                    </div>
+                </div>
+
+                <button type="submit" disabled={saving} className="w-full bg-black text-white py-3 rounded-lg font-bold hover:bg-gray-800">{saving ? t.saving : t.saveConfig}</button>
+            </form>
+        </div>
+    );
+};
+
+const ProfileView = ({ user, t, onUpdateUser, getRoleLabel }: { user: User, t: any, onUpdateUser: (u: User) => void, getRoleLabel: (r: string) => string }) => {
+    const [name, setName] = useState(user.name);
+    const [whatsapp, setWhatsapp] = useState(user.whatsapp || '');
+    const [phone, setPhone] = useState(user.phone || '');
+    const [avatarBase64, setAvatarBase64] = useState<string | undefined>(undefined);
+    const [saving, setSaving] = useState(false);
+    const fileRef = useRef<HTMLInputElement>(null);
+
+    const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            const reader = new FileReader();
+            reader.onload = (ev) => setAvatarBase64(ev.target?.result as string);
+            reader.readAsDataURL(e.target.files[0]);
+        }
+    };
+
+    const handleSave = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setSaving(true);
+        try {
+            const updated = await authService.updateProfile(user.id, { name, whatsapp, phone }, avatarBase64);
+            onUpdateUser(updated);
+            alert(t.profileSaved);
+        } catch (e) {
+            console.error(e);
+            alert("Error");
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    return (
+        <div className="max-w-xl mx-auto bg-white p-8 rounded-2xl shadow-xl border border-gray-100">
+             <h2 className="text-2xl font-bold text-gray-900 mb-6">{t.profileTitle}</h2>
+             <form onSubmit={handleSave} className="space-y-6">
+                 <div className="flex flex-col items-center mb-6">
+                     <div className="w-24 h-24 rounded-full bg-gray-200 overflow-hidden mb-2 relative group cursor-pointer" onClick={() => fileRef.current?.click()}>
+                         <img src={avatarBase64 || user.avatarUrl || `https://ui-avatars.com/api/?name=${name}`} className="w-full h-full object-cover" />
+                         <div className="absolute inset-0 bg-black/50 hidden group-hover:flex items-center justify-center text-white text-xs font-bold">{t.changeAvatar}</div>
+                     </div>
+                     <input type="file" ref={fileRef} onChange={handleAvatarChange} className="hidden" accept="image/*" />
+                     <p className="text-sm font-bold text-gray-500">{user.email}</p>
+                     <span className="bg-tri-orange/10 text-tri-orange text-xs font-bold px-2 py-1 rounded mt-1 uppercase">{getRoleLabel(user.role)}</span>
+                 </div>
+                 
+                 <div><label className="block text-xs font-bold text-gray-500 uppercase mb-1">{t.nameLabel}</label><input className="w-full px-4 py-2 border rounded-lg bg-white" value={name} onChange={e => setName(e.target.value)} /></div>
+                 <div><label className="block text-xs font-bold text-gray-500 uppercase mb-1">{t.whatsappLabel}</label><input className="w-full px-4 py-2 border rounded-lg bg-white" value={whatsapp} onChange={e => setWhatsapp(e.target.value)} /></div>
+                 <div><label className="block text-xs font-bold text-gray-500 uppercase mb-1">{t.phoneLabel}</label><input className="w-full px-4 py-2 border rounded-lg bg-white" value={phone} onChange={e => setPhone(e.target.value)} /></div>
+                 
+                 <button type="submit" disabled={saving} className="w-full bg-tri-orange text-white py-3 rounded-lg font-bold">{saving ? '...' : t.saveProfile}</button>
+             </form>
+        </div>
+    );
+};
+
+const UserManagementView = ({ t, currentUser, getRoleLabel }: { t: any, currentUser: User | null, getRoleLabel: (r:string) => string }) => {
+    const [users, setUsers] = useState<User[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [errorMsg, setErrorMsg] = useState('');
+    const [editingUser, setEditingUser] = useState<User | null>(null);
+
+    const loadUsers = async () => {
+        setLoading(true); setErrorMsg('');
+        try {
+            const u = await adminService.getAllUsers();
+            setUsers(u);
+            if (u.length === 0) setErrorMsg("No users found. Check RLS policies.");
+        } catch (e) {
+            console.error(e);
+            setErrorMsg("Failed to load users.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => { loadUsers(); }, []);
+
+    const handleRoleChange = async (userId: string, newRole: UserRole) => {
+        try {
+            await adminService.updateUserRole(userId, newRole);
+            setUsers(users.map(u => u.id === userId ? { ...u, role: newRole } : u));
+        } catch (e) { alert(t.updateError); }
+    };
+    
+    const handleDeleteUser = async (userId: string) => {
+        if(!window.confirm("¿Seguro de borrar este usuario?")) return;
+        try {
+            await adminService.deleteUser(userId);
+            setUsers(users.filter(u => u.id !== userId));
+        } catch(e) { alert("Error deleting user"); }
+    };
+
+    return (
+        <div className="bg-white rounded-xl shadow border border-gray-200 overflow-hidden">
+             <div className="p-6 border-b border-gray-100 flex justify-between items-center">
+                 <h2 className="text-xl font-bold">{t.usersTitle}</h2>
+                 <button onClick={loadUsers} className="text-gray-500 hover:text-tri-orange"><i className="fa-solid fa-rotate-right"></i></button>
+             </div>
+             {loading ? <div className="p-6 text-center">Loading...</div> : errorMsg ? <div className="p-6 text-center text-red-500">{errorMsg}</div> : 
+             <div className="overflow-x-auto">
+                 <table className="w-full text-sm text-left">
+                     <thead className="bg-gray-50 text-gray-500 uppercase font-bold text-xs">
+                         <tr>
+                             <th className="px-6 py-3">User</th>
+                             <th className="px-6 py-3">Contact</th>
+                             <th className="px-6 py-3">Role</th>
+                             <th className="px-6 py-3 text-right">Actions</th>
+                         </tr>
+                     </thead>
+                     <tbody>
+                         {users.map(u => (
+                             <tr key={u.id} className="border-b hover:bg-gray-50">
+                                 <td className="px-6 py-4 flex items-center gap-3">
+                                     <img src={u.avatarUrl || `https://ui-avatars.com/api/?name=${u.name}`} className="w-8 h-8 rounded-full bg-gray-200" />
+                                     <div>
+                                         <div className="font-bold text-gray-900">{u.name}</div>
+                                         <div className="text-gray-500 text-xs">{u.email}</div>
+                                     </div>
+                                 </td>
+                                 <td className="px-6 py-4 text-gray-500">{u.whatsapp || u.phone || '-'}</td>
+                                 <td className="px-6 py-4">
+                                     <select 
+                                        className="bg-white border border-gray-300 rounded px-2 py-1 text-xs font-bold"
+                                        value={u.role}
+                                        onChange={(e) => handleRoleChange(u.id, e.target.value as UserRole)}
+                                        disabled={u.id === currentUser?.id} // Prevent locking oneself out
+                                     >
+                                         <option value="buyer">{t.roleBuyer}</option>
+                                         <option value="seller">{t.roleSeller}</option>
+                                         <option value="admin">{t.roleAdmin}</option>
+                                     </select>
+                                 </td>
+                                 <td className="px-6 py-4 text-right">
+                                     <button onClick={() => handleDeleteUser(u.id)} className="text-red-500 hover:text-red-700 ml-2" disabled={u.id === currentUser?.id}>
+                                         <i className="fa-solid fa-trash"></i>
+                                     </button>
+                                 </td>
+                             </tr>
+                         ))}
+                     </tbody>
+                 </table>
+             </div>}
+        </div>
+    );
+};
+
+const ProductDetailView = ({ product, onBack, t, user, onEdit, onDelete }: { product: Product, onBack: () => void, t: any, user: User | null, onEdit: (p: Product) => void, onDelete: (id: string) => void }) => {
+    const [mainImageIdx, setMainImageIdx] = useState(0);
+    const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+    const images = product.imageUrls.length > 0 ? product.imageUrls : ['https://via.placeholder.com/600'];
+    const isOwner = user && (user.id === product.userId || user.role === 'admin');
+
+    const handleNextImg = (e?: React.MouseEvent) => { e?.stopPropagation(); setMainImageIdx((i) => (i + 1) % images.length); };
+    const handlePrevImg = (e?: React.MouseEvent) => { e?.stopPropagation(); setMainImageIdx((i) => (i - 1 + images.length) % images.length); };
+
+    return (
+        <div className="max-w-6xl mx-auto bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
+             {/* Lightbox */}
+             {isLightboxOpen && (
+                 <div className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center p-4" onClick={() => setIsLightboxOpen(false)}>
+                     <button className="absolute top-4 right-4 text-white text-3xl"><i className="fa-solid fa-times"></i></button>
+                     <button className="absolute left-4 text-white text-3xl" onClick={handlePrevImg}><i className="fa-solid fa-chevron-left"></i></button>
+                     <img src={images[mainImageIdx]} className="max-h-full max-w-full object-contain" onClick={(e)=>e.stopPropagation()} />
+                     <button className="absolute right-4 text-white text-3xl" onClick={handleNextImg}><i className="fa-solid fa-chevron-right"></i></button>
+                 </div>
+             )}
+
+             <div className="flex flex-col md:flex-row">
+                 {/* Images */}
+                 <div className="w-full md:w-1/2 bg-gray-50 relative group">
+                     <div className="aspect-square w-full relative cursor-zoom-in" onClick={() => setIsLightboxOpen(true)}>
+                         <img src={images[mainImageIdx]} className="w-full h-full object-cover" />
+                         {images.length > 1 && (
+                            <>
+                                <button onClick={handlePrevImg} className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/80 p-2 rounded-full hover:bg-white"><i className="fa-solid fa-chevron-left"></i></button>
+                                <button onClick={handleNextImg} className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/80 p-2 rounded-full hover:bg-white"><i className="fa-solid fa-chevron-right"></i></button>
+                            </>
+                         )}
+                     </div>
+                     <div className="flex gap-2 p-4 overflow-x-auto">
+                         {images.map((img, i) => (
+                             <img key={i} src={img} className={`w-16 h-16 rounded cursor-pointer object-cover border-2 ${i === mainImageIdx ? 'border-tri-orange' : 'border-transparent'}`} onClick={() => setMainImageIdx(i)} />
+                         ))}
+                     </div>
+                 </div>
+
+                 {/* Details */}
+                 <div className="w-full md:w-1/2 p-8 flex flex-col">
+                     <div className="flex justify-between items-start mb-4">
+                         <div>
+                             <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs font-bold uppercase tracking-wide mb-2 inline-block">{getCategoryLabel(product.category, t)}</span>
+                             <h1 className="text-3xl font-bold text-gray-900 leading-tight">{product.title}</h1>
+                         </div>
+                         {isOwner && (
+                             <div className="flex gap-2">
+                                 <button onClick={() => onEdit(product)} className="text-gray-400 hover:text-blue-600 p-2"><i className="fa-solid fa-pen"></i></button>
+                                 <button onClick={() => onDelete(product.id)} className="text-gray-400 hover:text-red-600 p-2"><i className="fa-solid fa-trash"></i></button>
+                             </div>
+                         )}
+                     </div>
+                     
+                     <div className="text-3xl font-bold text-tri-orange mb-6">{getPriceDisplay(product.price, product.currency)}</div>
+                     
+                     <div className="grid grid-cols-2 gap-4 mb-6 text-sm">
+                         <div><span className="text-gray-500 block text-xs uppercase font-bold">{t.brandLabel}</span><span className="font-semibold">{product.brand}</span></div>
+                         <div><span className="text-gray-500 block text-xs uppercase font-bold">{t.conditionLabel}</span><span className="font-semibold">{getConditionLabel(product.condition, t)}</span></div>
+                     </div>
+
+                     <div className="prose prose-sm text-gray-600 mb-8 flex-grow">
+                         <p>{product.description}</p>
+                     </div>
+                     
+                     <div className="mt-auto">
+                        <button className="w-full bg-black text-white py-4 rounded-xl font-bold hover:bg-gray-800 transition flex items-center justify-center">
+                            <i className="fa-brands fa-whatsapp mr-2 text-xl"></i> {t.contactSeller}
+                        </button>
+                        <button onClick={onBack} className="w-full mt-3 text-gray-500 font-bold hover:text-gray-800 text-sm">{t.backToMarket}</button>
+                     </div>
+                 </div>
+             </div>
+        </div>
+    );
+};
+
 
 const LoginView = ({ onLoginSuccess, t, siteConfig, initialError }: { onLoginSuccess: (user: User) => void, t: any, siteConfig: SiteSettings, initialError?: string }) => {
     const [isSignUp, setIsSignUp] = useState(false);
@@ -931,13 +1261,6 @@ const LoginView = ({ onLoginSuccess, t, siteConfig, initialError }: { onLoginSuc
     );
 };
 
-// Reuse existing components: ConfigView, ProfileView, UserManagementView, ProductDetailView
-// (Assuming these are defined as per previous interactions)
-const ConfigView = ({ siteConfig, onUpdateConfig, t }: any) => { /* ... existing implementation ... */ return <div className="text-center">Config View (Placeholder for brevity, assumes existing)</div> };
-const ProfileView = ({ user, t, onUpdateUser, getRoleLabel }: any) => { /* ... existing implementation ... */ return <div className="text-center">Profile View (Placeholder for brevity)</div> };
-const UserManagementView = ({ t, currentUser, getRoleLabel }: any) => { /* ... existing implementation ... */ return <div className="text-center">User Mgmt (Placeholder for brevity)</div> };
-const ProductDetailView = ({ product, onBack, t, user, onEdit, onDelete }: any) => { /* ... existing implementation ... */ return <div className="text-center">Detail View (Placeholder for brevity)</div> };
-
 
 // --- APP COMPONENT ---
 
@@ -954,6 +1277,7 @@ const App: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [shops, setShops] = useState<ShopSummary[]>([]);
   const [productsLoading, setProductsLoading] = useState(true);
+  const [oauthError, setOauthError] = useState('');
   
   // Filters...
   const [searchTerm, setSearchTerm] = useState('');
@@ -981,9 +1305,20 @@ const App: React.FC = () => {
 
   const t = translations[language];
 
-  // ... (Load Config and Products Effects same as before) ...
+  // Load Config, Products, and Check for OAuth Errors
   useEffect(() => {
     const init = async () => {
+        // 1. Check URL for OAuth errors
+        const params = new URLSearchParams(window.location.search);
+        const hash = window.location.hash;
+        if (params.get('error') || (hash.includes('error='))) {
+            const errDesc = params.get('error_description') || decodeURIComponent(hash.match(/error_description=([^&]*)/)?.[1] || 'Login failed');
+            setOauthError(errDesc);
+            setView('login');
+            // Clean URL
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+
         const s = await configService.getSettings();
         setSiteConfig(s);
         setLanguage(s.defaultLanguage);
@@ -1077,7 +1412,7 @@ const App: React.FC = () => {
 
   const renderContent = () => {
       switch(view) {
-          case 'login': return <LoginView onLoginSuccess={u => { setUser(u); setView('marketplace'); }} t={t} siteConfig={siteConfig} />;
+          case 'login': return <LoginView onLoginSuccess={u => { setUser(u); setView('marketplace'); }} t={t} siteConfig={siteConfig} initialError={oauthError} />;
           case 'upload': return <UploadView onAnalysisComplete={(d, i) => { setAnalysisData(d); setUploadImages(i); setView('edit'); }} onCancel={() => setView('marketplace')} t={t} />;
           case 'edit': return analysisData ? <EditView initialData={analysisData} images={uploadImages} onSave={handleSaveProduct} onCancel={() => setView('marketplace')} t={t} isEditing={!!editingId} onDelete={() => editingId && handleDeleteProduct(editingId)} /> : null;
           case 'product-detail': return selectedProduct ? <ProductDetailView product={selectedProduct} onBack={() => setView('marketplace')} t={t} user={user} onEdit={handleEditProduct} onDelete={handleDeleteProduct} /> : null;
@@ -1171,7 +1506,10 @@ const App: React.FC = () => {
   return (
     <Layout user={user} activePage={view} onNavigate={setView} onLogout={handleLogout} language={language} onToggleLanguage={() => setLanguage(l => l==='es'?'en':'es')} t={t} siteConfig={siteConfig} getRoleLabel={r=>getRoleLabel(r,t)}>
         {renderContent()}
-        <TriBot currentContext={getScreenContext()} />
+        <TriBot currentContext={getScreenContext()} onNavigateProduct={(id) => {
+            const p = products.find(prod => prod.id === id);
+            if(p) { setSelectedProduct(p); setView('product-detail'); }
+        }}/>
     </Layout>
   );
 };
