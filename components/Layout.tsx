@@ -101,6 +101,24 @@ export const Layout: React.FC<LayoutProps> = ({
             
             <div className="flex items-center space-x-4">
               
+              {/* Desktop Nav Links */}
+              <div className="hidden md:flex items-center space-x-1 mr-2">
+                 <button 
+                   onClick={() => onNavigate('shops')} 
+                   className={`px-3 py-2 rounded-lg text-sm font-bold uppercase transition ${activePage === 'shops' ? 'text-tri-blue bg-blue-50' : 'text-gray-500 hover:text-gray-900'}`}
+                 >
+                   {t.navShops}
+                 </button>
+                 {(user?.role === 'admin' || user?.role === 'seller') && (
+                     <button 
+                       onClick={() => onNavigate('inventory')} 
+                       className={`px-3 py-2 rounded-lg text-sm font-bold uppercase transition ${activePage === 'inventory' ? 'text-tri-blue bg-blue-50' : 'text-gray-500 hover:text-gray-900'}`}
+                     >
+                       {t.navInventory}
+                     </button>
+                 )}
+              </div>
+
               {/* Desktop Sell Button */}
               {user && (
                 <button
@@ -203,7 +221,13 @@ export const Layout: React.FC<LayoutProps> = ({
           active={activePage === 'marketplace' || activePage === 'product-detail'} 
           onClick={() => onNavigate('marketplace')} 
         />
-        {user && (
+        <NavButton 
+          icon="fa-store" 
+          label={t.navShops}
+          active={activePage === 'shops'} 
+          onClick={() => onNavigate('shops')} 
+        />
+        {user ? (
           <NavButton 
             icon="fa-plus-circle" 
             label={t.navSell}
@@ -211,18 +235,18 @@ export const Layout: React.FC<LayoutProps> = ({
             onClick={handleSellClick} 
             primary
           />
-        )}
-        {canSell && (
-          <NavButton 
-            icon="fa-box-open" 
-            label={isAdmin ? t.navInventory : 'Inventario'} 
-            active={activePage === 'inventory'} 
-            onClick={() => onNavigate('inventory')} 
+        ) : (
+             <NavButton 
+            icon="fa-sign-in-alt" 
+            label={t.login}
+            active={activePage === 'login'} 
+            onClick={() => onNavigate('login')} 
+            primary
           />
         )}
         <NavButton 
-            icon={user ? "fa-user" : "fa-sign-in-alt"} 
-            label={user ? t.myProfile : t.login} 
+            icon={user ? "fa-user" : "fa-user-gear"} 
+            label={user ? t.myProfile : 'Perfil'} 
             active={activePage === 'profile' || activePage === 'login'} 
             onClick={() => onNavigate(user ? 'profile' : 'login')} 
         />
