@@ -18,16 +18,18 @@ interface LayoutProps {
 export const Layout: React.FC<LayoutProps> = ({ 
   children, user, onNavigate, activePage, onLogout, language, onToggleLanguage, t, siteConfig, getRoleLabel
 }) => {
-  // Helpers to determine role capabilities
-  // Sellers can see sell button, but if no shop, app will redirect to config
-  const canSell = user && (user.role === 'admin' || user.role === 'seller' || user.role === 'buyer'); 
-  const isAdmin = user && user.role === 'admin';
-  const hasShop = user && user.shopName;
+  // Logic: 
+  // Admin -> Can see users, config, shops. CANNOT Sell.
+  // Seller -> Can Sell, My Shop.
+  // Buyer -> Can see Market, Shops. CANNOT Sell until upgrade.
   
+  const isAdmin = user?.role === 'admin';
+  const isSeller = user?.role === 'seller';
+  const isBuyer = user?.role === 'buyer' || !user;
+
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // Close menu on click outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
@@ -40,10 +42,8 @@ export const Layout: React.FC<LayoutProps> = ({
     };
   }, []);
 
-  // Helper to render logo text dynamically or default
   const renderLogoText = () => {
     const name = siteConfig.siteName || 'Mercado Tri';
-    // Split name to colorize the last part if it matches "Tri" or similar, otherwise just render
     const parts = name.split(' ');
     const firstPart = parts[0];
     const rest = parts.slice(1).join(' ');
@@ -61,19 +61,21 @@ export const Layout: React.FC<LayoutProps> = ({
   };
 
   const handleSellClick = () => {
-      // Logic handled in App.tsx mainly, but navigation trigger is here
       if (!user) {
           onNavigate('login');
-      } else if (!hasShop && user.role !== 'admin') {
-          // If buyer/seller has no shop, go to config
-          onNavigate('shop-config');
-      } else {
+          return;
+      }
+      if (isSeller) {
           onNavigate('upload');
+      } else if (isBuyer) {
+          // If buyer clicks Sell (though button is hidden now), redirect to profile
+          alert(t.becomeSellerDesc);
+          onNavigate('profile');
       }
   };
 
   return (
-    <div className="min-h-screen bg-tri-light flex flex-col font-sans">
+    <div className="min-h-screen bg-white flex flex-col font-sans">
       {/* Top Navbar */}
       <nav className="bg-white/95 backdrop-blur-md sticky top-0 z-50 border-b border-gray-200 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -82,7 +84,6 @@ export const Layout: React.FC<LayoutProps> = ({
               {siteConfig.logoUrl ? (
                 <img src={siteConfig.logoUrl} alt="Logo" className="w-12 h-12 object-contain" />
               ) : (
-                /* Fallback SVG Logo */
                 <svg className="w-12 h-12 transform group-hover:scale-105 transition-transform" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M50 15 C65 15 80 25 85 40 C88 48 85 55 80 60 L 50 25 L 50 15 Z" fill="#06B6D4" />
                   <path d="M45 20 C35 30 35 45 40 55 L 85 40 C 80 25 65 15 45 20 Z" fill="#06B6D4" fillOpacity="0.8"/>
@@ -101,7 +102,6 @@ export const Layout: React.FC<LayoutProps> = ({
             
             <div className="flex items-center space-x-4">
               
-              {/* Desktop Nav Links */}
               <div className="hidden md:flex items-center space-x-1 mr-2">
                  <button 
                    onClick={() => onNavigate('shops')} 
@@ -109,18 +109,10 @@ export const Layout: React.FC<LayoutProps> = ({
                  >
                    {t.navShops}
                  </button>
-                 {(user?.role === 'admin' || user?.role === 'seller') && (
-                     <button 
-                       onClick={() => onNavigate('inventory')} 
-                       className={`px-3 py-2 rounded-lg text-sm font-bold uppercase transition ${activePage === 'inventory' ? 'text-tri-blue bg-blue-50' : 'text-gray-500 hover:text-gray-900'}`}
-                     >
-                       {t.navInventory}
-                     </button>
-                 )}
               </div>
 
-              {/* Desktop Sell Button */}
-              {user && (
+              {/* Sell Button: Only for Seller */}
+              {isSeller && (
                 <button
                   onClick={handleSellClick}
                   className="hidden md:flex items-center bg-tri-orange text-white px-5 py-2 rounded-full text-sm font-bold hover:bg-orange-600 transition shadow-sm hover:shadow-md mr-2"
@@ -130,7 +122,6 @@ export const Layout: React.FC<LayoutProps> = ({
                 </button>
               )}
 
-              {/* Language Switcher */}
               <button 
                 onClick={onToggleLanguage}
                 className="text-xs font-bold px-2 py-1 rounded border border-gray-300 text-gray-600 hover:border-tri-orange hover:text-tri-orange transition uppercase"
@@ -147,34 +138,23 @@ export const Layout: React.FC<LayoutProps> = ({
                      {user.avatarUrl ? <img src={user.avatarUrl} className="w-full h-full object-cover"/> : <i className="fa-solid fa-user text-gray-500 mt-1"></i>}
                   </button>
 
-                  {/* Dropdown Menu */}
                   {isUserMenuOpen && (
                     <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl py-2 z-50 border border-gray-100 animate-fade-in-down origin-top-right">
-                      {/* Header with Name/Role */}
                       <div className="px-4 py-3 border-b border-gray-100 bg-gray-50/50">
                         <p className="text-sm font-bold text-gray-900 truncate">{user.name}</p>
                         <p className="text-xs text-tri-orange font-bold uppercase tracking-wider">{getRoleLabel(user.role)}</p>
                       </div>
 
-                      {/* Menu Options */}
                       <div className="py-1">
-                        {hasShop && (
+                        {isSeller && (
                             <button onClick={() => { onNavigate('my-shop'); setIsUserMenuOpen(false); }} className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-tri-blue font-medium transition flex items-center">
                               <i className="fa-solid fa-store w-5 text-tri-orange"></i> Mi Tienda
                             </button>
                         )}
-                        <button onClick={() => { onNavigate('marketplace'); setIsUserMenuOpen(false); }} className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-tri-blue font-medium transition flex items-center">
-                          <i className="fa-solid fa-shop w-5 text-gray-400"></i> {t.navShop}
-                        </button>
+                        
                         <button onClick={() => { onNavigate('profile'); setIsUserMenuOpen(false); }} className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-tri-blue font-medium transition flex items-center">
                           <i className="fa-solid fa-user w-5 text-gray-400"></i> {t.myProfile}
                         </button>
-                        
-                        {canSell && (
-                           <button onClick={() => { onNavigate('inventory'); setIsUserMenuOpen(false); }} className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-tri-blue font-medium transition flex items-center">
-                             <i className="fa-solid fa-box-open w-5 text-gray-400"></i> {t.navInventory}
-                           </button>
-                        )}
 
                         {isAdmin && (
                           <>
@@ -227,26 +207,18 @@ export const Layout: React.FC<LayoutProps> = ({
           active={activePage === 'shops'} 
           onClick={() => onNavigate('shops')} 
         />
-        {user ? (
-          <NavButton 
-            icon="fa-plus-circle" 
-            label={t.navSell}
-            active={activePage === 'upload'} 
-            onClick={handleSellClick} 
-            primary
-          />
-        ) : (
-             <NavButton 
-            icon="fa-sign-in-alt" 
-            label={t.login}
-            active={activePage === 'login'} 
-            onClick={() => onNavigate('login')} 
-            primary
-          />
+        {isSeller && (
+            <NavButton 
+              icon="fa-plus-circle" 
+              label={t.navSell}
+              active={activePage === 'upload'} 
+              onClick={handleSellClick} 
+              primary
+            />
         )}
         <NavButton 
-            icon={user ? "fa-user" : "fa-user-gear"} 
-            label={user ? t.myProfile : 'Perfil'} 
+            icon={user ? "fa-user" : "fa-sign-in-alt"} 
+            label={user ? t.myProfile : t.login} 
             active={activePage === 'profile' || activePage === 'login'} 
             onClick={() => onNavigate(user ? 'profile' : 'login')} 
         />

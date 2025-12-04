@@ -1,0 +1,183 @@
+
+# Prompt de Desarrollo: Aplicación "Mercado Tri" (PWA con IA)
+
+Actúa como un Ingeniero Fullstack Senior experto en React, TypeScript, Tailwind CSS, Supabase y Google Gemini API. Tu objetivo es construir una aplicación web progresiva (PWA) llamada "Mercado Tri", un marketplace especializado en compra y venta de equipamiento de triatlón (Ciclismo, Running, Natación) enfocado en el mercado argentino.
+
+## 1. Stack Tecnológico
+- **Frontend:** React 19, TypeScript, Vite.
+- **Estilos:** Tailwind CSS (Diseño responsive, paleta de colores deportiva: Naranja, Azul Cian, Verde Lima).
+- **Iconos:** FontAwesome (vía CDN).
+- **Backend/DB/Auth:** Supabase (Auth para Email/Google/GitHub, Database PostgreSQL, Storage para imágenes).
+- **IA Generativa:** Google Gemini API (`@google/genai`). Modelos: `gemini-2.5-flash`.
+- **PWA:** Manifest.json, Service Worker para instalación en móviles Android/iOS.
+
+## 2. Estructura de Datos (Types)
+Define interfaces claras para:
+- **User:** id, email, role ('admin'|'seller'|'buyer'), shopName, shopDescription, avatarUrl.
+- **Product:** id, title, description, price, currency (ARS/USD), category (Cycling, Running, Swimming, Triathlon, Other), condition, imageUrls[], status, tags.
+- **AIAnalysisResult:** Resultado del análisis de imagen (título, precio sugerido, rango min/max, justificación breve, fuentes web).
+
+## 3. Funcionalidades Principales
+
+### A. Autenticación y Gestión de Usuarios
+- Login/Registro con Email/Password y OAuth (Google, GitHub).
+- Roles: 
+  - **Buyer:** Puede ver productos y contactar.
+  - **Seller:** Debe configurar un perfil de "Tienda" (Nombre, Logo, Descripción) antes de vender.
+  - **Admin:** Gestión de usuarios y configuración del sitio.
+
+### B. Venta y Publicación Asistida por IA (Core Feature)
+El flujo de "Vender" debe ser mágico:
+1.  **Subida de Imagen:** El usuario sube foto(s) del producto.
+2.  **Análisis con Gemini Vision:**
+    - Envía la imagen a Gemini.
+    - **Prompt de Sistema:** Actúa como tasador experto en Argentina. Usa la herramienta **Google Search Grounding** para buscar precios reales en MercadoLibre, Facebook Marketplace, etc.
+    - **Salida:** JSON con título, categoría, marca, estado, y un análisis de precios (Mínimo, Máximo, Sugerido).
+    - **Explicación de Precio:** Genera una justificación de máximo 2 oraciones sobre por qué vale eso.
+3.  **Edición y Publicación:**
+    - Muestra un formulario pre-llenado con los datos de la IA.
+    - **Visualización de Precios:** Muestra un componente gráfico (barra de rango) indicando dónde se ubica el precio sugerido entre el Mínimo y Máximo detectados.
+    - **TTS (Text-to-Speech):** Agrega un botón para escuchar la explicación del precio con voz de mujer (acento argentino o español neutro).
+
+### C. Gestión de Tienda (Seller)
+- **Configuración:** Formulario para crear la tienda.
+- **IA para Branding:** Botones para generar "Nombre de Tienda" y "Descripción" creativos usando Gemini basado en el nombre del usuario.
+- **Dashboard:** Vista de "Mi Tienda" con estadísticas simples (total productos, vendidos, ingresos estimados).
+- **Inventario:** CRUD de productos propios.
+
+### D. Marketplace (Buyer)
+- **Home:** Listado de productos tipo grid.
+- **Filtros:** Por búsqueda de texto y botones rápidos de Categoría.
+- **Detalle de Producto:** 
+  - Galería de imágenes.
+  - Precio destacado.
+  - Botón "Contactar Vendedor" que abre directamente **WhatsApp** con un mensaje predefinido.
+- **Directorio de Tiendas:** Listado de vendedores destacados.
+
+### E. Asistente Virtual "TriBot"
+- Un componente flotante (FAB) siempre visible.
+- **Contexto:** El bot sabe en qué pantalla está el usuario y tiene acceso al inventario de productos.
+- **Multimodal:**
+  - Acepta texto.
+  - Acepta **Entrada de Voz** (Graba audio, lo envía a Gemini, recibe respuesta texto).
+- **Personalidad:** Experto en triatlón, servicial, tono neutro.
+
+## 4. UI/UX y Diseño
+- **Estilo:** Limpio, moderno, tipografía 'Inter' y 'Teko' (deportiva).
+- **Feedback:** Indicadores de carga (spinners, esqueletos) durante el análisis de IA.
+- **PWA:** Debe incluir `manifest.json` y `sw.js` configurados para permitir la instalación "Add to Home Screen" y ocultar la barra del navegador (display: standalone).
+
+## 5. Reglas de Negocio Específicas
+- El análisis de precios debe ser **exclusivamente en Argentina**.
+- La moneda por defecto es ARS, salvo gama alta (USD).
+- La explicación del precio debe ser concisa (max 2 oraciones).
+
+## 6. Archivos Clave Esperados
+- `App.tsx`: Enrutamiento y lógica principal.
+- `services/geminiService.ts`: Lógica de conexión con la API, prompts de sistema, manejo de herramientas (Search).
+- `services/supabaseClient.ts` y `mockBackend.ts`: Manejo de datos.
+- `components/TriBot.tsx`: Lógica del chat y grabación de audio.
+- `manifest.json` y `sw.js`.
+
+## 7. Estructura de Base de Datos (Supabase SQL)
+
+Ejecuta estos scripts en el Editor SQL de Supabase para configurar la base de datos necesaria para la aplicación.
+
+```sql
+-- 1. TABLA PROFILES (Extiende auth.users)
+create table profiles (
+  id uuid references auth.users on delete cascade not null primary key,
+  email text,
+  role text default 'buyer' check (role in ('admin', 'seller', 'buyer')),
+  name text,
+  whatsapp text,
+  phone text,
+  avatar_url text,
+  shop_name text,
+  shop_description text,
+  shop_image_url text,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+-- Trigger para crear perfil automático al registrarse
+create or replace function public.handle_new_user() 
+returns trigger as $$
+begin
+  insert into public.profiles (id, email, name, role)
+  values (new.id, new.email, split_part(new.email, '@', 1), 'buyer');
+  return new;
+end;
+$$ language plpgsql security definer;
+
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute procedure public.handle_new_user();
+
+-- 2. TABLA PRODUCTS
+create table products (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references profiles(id) on delete cascade not null,
+  title text not null,
+  description text,
+  category text not null, -- 'Cycling', 'Running', 'Swimming', 'Triathlon', 'Other'
+  brand text,
+  condition text, -- 'New', 'Used - Like New', etc.
+  price numeric default 0,
+  currency text default 'ARS',
+  image_urls text[] default '{}',
+  status text default 'published' check (status in ('draft', 'published', 'sold')),
+  tags text[] default '{}',
+  created_at timestamptz default now()
+);
+
+-- 3. TABLA SITE_SETTINGS (Configuración Admin)
+create table site_settings (
+  id bigint generated by default as identity primary key,
+  site_name text default 'Mercado Tri',
+  site_description text,
+  logo_url text,
+  default_language text default 'es',
+  ai_provider text default 'gemini',
+  gemini_api_key text,
+  gemini_model text,
+  openai_api_key text,
+  openai_model text,
+  updated_at timestamptz default now()
+);
+
+-- Insertar configuración inicial
+insert into site_settings (id, site_name) values (1, 'Mercado Tri')
+on conflict (id) do nothing;
+
+-- 4. SEGURIDAD RLS (Row Level Security)
+
+-- Profiles
+alter table profiles enable row level security;
+create policy "Perfiles públicos" on profiles for select using (true);
+create policy "Usuario edita propio perfil" on profiles for update using (auth.uid() = id);
+
+-- Products
+alter table products enable row level security;
+create policy "Productos públicos" on products for select using (true);
+create policy "Vendedores crean productos" on products for insert with check (auth.uid() = user_id);
+create policy "Dueños editan productos" on products for update using (auth.uid() = user_id);
+create policy "Dueños eliminan productos" on products for delete using (auth.uid() = user_id);
+
+-- Site Settings
+alter table site_settings enable row level security;
+create policy "Configuración pública" on site_settings for select using (true);
+create policy "Solo admin edita configuración" on site_settings for update using (
+  exists (select 1 from profiles where id = auth.uid() and role = 'admin')
+);
+
+-- 5. STORAGE BUCKETS
+-- Crear buckets desde el dashboard o SQL si la extensión lo permite
+insert into storage.buckets (id, name, public) values ('product-images', 'product-images', true);
+insert into storage.buckets (id, name, public) values ('avatars', 'avatars', true);
+
+-- Políticas de Storage (Simplificadas para demo)
+create policy "Imágenes públicas" on storage.objects for select using ( bucket_id in ('product-images', 'avatars') );
+create policy "Usuarios suben imágenes" on storage.objects for insert with check ( bucket_id in ('product-images', 'avatars') and auth.role() = 'authenticated' );
+```
+Genera el código completo respetando esta estructura.

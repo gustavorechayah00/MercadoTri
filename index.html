@@ -1,9 +1,12 @@
+
 <!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#FFFFFF" />
     <link rel="icon" type="image/webp" href="/logo_mercadotri.webp" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>Mercado Tri</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
@@ -24,7 +27,7 @@
                 dark: '#111827',   // Cool gray 900
                 blue: '#06B6D4',   // Cyan-500 (Swimming)
                 green: '#84CC16',  // Lime-500 (Running)
-                light: '#F8FAFC'   // Very light gray/blue tint
+                light: '#FFFFFF'   // Changed to pure white
               }
             }
           }
@@ -56,6 +59,7 @@
 {
   "imports": {
     "react": "https://aistudiocdn.com/react@^19.2.0",
+    "react-dom/client": "https://aistudiocdn.com/react-dom@^19.2.0/client",
     "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
     "react/": "https://aistudiocdn.com/react@^19.2.0/",
     "@google/genai": "https://aistudiocdn.com/@google/genai@^1.30.0",
@@ -64,7 +68,7 @@
 }
 </script>
 </head>
-  <body class="bg-tri-light text-gray-900 antialiased">
+  <body class="bg-white text-gray-900 antialiased overscroll-none">
     <div id="root"></div>
     <!-- Entry point for Vite/React -->
     <script type="module" src="/index.tsx"></script>

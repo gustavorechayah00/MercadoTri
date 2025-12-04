@@ -224,7 +224,7 @@ export const TriBot: React.FC<TriBotProps> = ({ currentContext, onNavigateProduc
           </div>
 
           {/* Messages */}
-          <div className="flex-1 overflow-y-auto p-4 bg-gray-50 space-y-4">
+          <div className="flex-1 overflow-y-auto p-4 bg-white space-y-4">
             {messages.map((msg) => (
               <div key={msg.id} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
                 {msg.sender === 'bot' && (
@@ -256,7 +256,8 @@ export const TriBot: React.FC<TriBotProps> = ({ currentContext, onNavigateProduc
           {/* Input Area */}
           <div className="p-3 bg-white border-t border-gray-100">
              <form onSubmit={handleSendText} className="flex items-end gap-2 relative">
-                <div className="flex-1 bg-gray-100 rounded-2xl flex items-center px-4 py-2 border border-transparent focus-within:border-tri-blue focus-within:bg-white transition-colors">
+                {/* Changed from bg-gray-100 to bg-white with border for better visibility */}
+                <div className="flex-1 bg-white border border-gray-200 rounded-2xl flex items-center px-4 py-2 focus-within:border-tri-blue focus-within:ring-1 focus-within:ring-tri-blue/30 transition-all">
                     <input 
                         type="text" 
                         className="flex-1 bg-transparent border-none outline-none text-sm text-gray-800 placeholder-gray-400 max-h-24 py-1"

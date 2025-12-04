@@ -37,7 +37,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onClick, show
       onClick={onClick}
       className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden transition-all duration-300 ease-out cursor-pointer flex flex-col h-full group hover:-translate-y-2 hover:shadow-2xl hover:border-tri-orange/50 hover:ring-2 hover:ring-tri-orange/80"
     >
-      <div className="relative aspect-square w-full bg-gray-100 overflow-hidden">
+      <div className="relative aspect-square w-full bg-white overflow-hidden">
         <img 
           src={images[currentImageIndex]} 
           alt={product.title} 
@@ -86,19 +86,19 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onClick, show
         )}
       </div>
 
-      <div className="p-3 flex flex-col flex-grow relative z-20 bg-white">
+      <div className="p-2 md:p-3 flex flex-col flex-grow relative z-20 bg-white">
         <div className="mb-1">
-          <h3 className="font-medium text-gray-900 line-clamp-2 text-sm leading-tight h-9 group-hover:text-tri-orange transition-colors">{product.title}</h3>
+          <h3 className="font-medium text-gray-900 line-clamp-2 text-xs md:text-sm leading-tight h-8 md:h-9 group-hover:text-tri-orange transition-colors">{product.title}</h3>
         </div>
         
         <div className="flex items-center text-[10px] text-gray-500 mb-2 space-x-1">
-           <span className="bg-gray-50 px-1.5 py-0.5 rounded text-gray-600 font-medium border border-gray-100 truncate max-w-[80px]">{product.brand}</span>
+           <span className="bg-gray-50 px-1.5 py-0.5 rounded text-gray-600 font-medium border border-gray-100 truncate max-w-[60px] md:max-w-[80px]">{product.brand}</span>
            <span>•</span>
            <span className="truncate">{product.condition}</span>
         </div>
 
         <div className="mt-auto flex justify-between items-end border-t border-gray-50 pt-2">
-          <span className="text-base font-bold text-gray-900 tracking-tight">
+          <span className="text-sm md:text-base font-bold text-gray-900 tracking-tight">
             {getPriceDisplay(product.price, product.currency)}
           </span>
           <span className="text-[10px] text-gray-400">

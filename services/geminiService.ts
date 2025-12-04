@@ -71,6 +71,47 @@ const callOpenAI = async (apiKey: string, model: string, messages: any[], respon
 
 // --- MAIN FUNCTIONS ---
 
+export const enhanceProductImageWithWatermark = async (base64Image: string): Promise<string | null> => {
+    const settings = await configService.getSettings();
+    const apiKey = settings.geminiApiKey || process.env.API_KEY;
+    if (!apiKey) return null; // Fail silently if no key, just return null
+
+    // Clean base64 header
+    const cleanBase64 = base64Image.split(',')[1] || base64Image;
+    const mimeType = base64Image.match(/data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+).*,.*/)?.[1] || 'image/jpeg';
+
+    const ai = new GoogleGenAI({ apiKey });
+
+    try {
+        // Using 'gemini-2.5-flash-image' for general image editing tasks to avoid permissions issues with 'pro' models
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash-image',
+            contents: {
+                parts: [
+                    { inlineData: { mimeType: mimeType, data: cleanBase64 } },
+                    { text: "Edit this image: 1) Keep the main product object exactly identical and sharp. 2) Apply a strong gaussian blur to the background to highlight the product (bokeh effect). 3) Add a small, discrete, semi-transparent white text watermark in the bottom right corner that says 'MercadoTri'." },
+                ],
+            },
+            config: {
+                // No specific image config needed for basic generation
+            }
+        });
+
+        for (const part of response.candidates?.[0]?.content?.parts || []) {
+            if (part.inlineData) {
+                const base64EncodeString = part.inlineData.data;
+                // Return fully formatted data URL
+                return `data:image/png;base64,${base64EncodeString}`;
+            }
+        }
+        return null;
+    } catch (e) {
+        // Log warning but don't crash the flow
+        console.warn("Image Enhancement Failed (feature skipped):", e);
+        return null; 
+    }
+};
+
 export const analyzeProductImage = async (base64Image: string): Promise<AIAnalysisResult> => {
   // 1. Fetch Dynamic Settings
   const settings = await configService.getSettings();

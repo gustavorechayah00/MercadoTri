@@ -12,7 +12,6 @@ const uploadImageToSupabase = async (base64Data: string, bucket: string = 'produ
     const blob = await fetchRes.blob();
 
     // 2. Generate unique filename
-    // Detect extension from base64 header
     const extensionMatch = base64Data.match(/^data:image\/(\w+);base64,/);
     const fileExt = extensionMatch ? extensionMatch[1] : 'jpg';
     const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
@@ -33,6 +32,7 @@ const uploadImageToSupabase = async (base64Data: string, bucket: string = 'produ
     return data.publicUrl;
   } catch (error) {
     console.error(`Error uploading image to ${bucket}:`, error);
+    if (base64Data.length < 2000000) return base64Data; 
     throw error;
   }
 };
@@ -63,13 +63,14 @@ const mapRowToUser = (row: any): User => ({
   name: row.name || row.email?.split('@')[0] || 'Usuario',
   whatsapp: row.whatsapp || '',
   phone: row.phone || '',
+  instagram: row.instagram || '',
   avatarUrl: row.avatar_url || '',
   shopName: row.shop_name,
   shopImageUrl: row.shop_image_url,
-  shopDescription: row.shop_description // Mapped
+  shopDescription: row.shop_description
 });
 
-// Default settings in case DB fetch fails
+// Default settings
 const DEFAULT_SETTINGS: SiteSettings = {
     siteName: 'Mercado Tri',
     siteDescription: 'La plataforma líder para productos de triatlón.',
@@ -77,74 +78,60 @@ const DEFAULT_SETTINGS: SiteSettings = {
     aiProvider: 'gemini'
 };
 
+// Fallback Mock Data
+const MOCK_PRODUCTS: Product[] = []; // Empty default
+
+const isNetworkError = (error: any) => {
+  const msg = error?.message || '';
+  if (typeof msg !== 'string') return false;
+  return msg.includes('Failed to fetch') || msg.includes('Network request failed') || msg.includes('connection error');
+};
+
 export const authService = {
   login: async (email: string, password: string): Promise<User> => {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (error) throw new Error(error.message);
-    if (!data.user) throw new Error("No user returned");
-
-    // CRITICAL: Ensure Admin Profile exists on Login to pass RLS
-    if (email === 'admin@triproducts.com') {
-      try {
-        await supabase.from('profiles').upsert({
-          id: data.user.id,
-          email: email,
-          role: 'admin'
-        }, { onConflict: 'id' }); 
-      } catch (e) {
-        console.warn("Could not upsert admin profile", e);
-      }
-      return { id: data.user.id, email: email, name: 'Admin', role: 'admin' };
-    }
-
-    // Fetch Profile
     try {
-        const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', data.user.id)
-        .single();
-        
-        if (profile) return mapRowToUser(profile);
-        
-        // If profile doesn't exist but auth does (rare inconsistency), treat as buyer
-        if (profileError && profileError.code === 'PGRST116') {
-             return {
-              id: data.user.id,
-              email: data.user.email || '',
-              name: data.user.email?.split('@')[0] || 'User',
-              role: 'buyer'
-            };
-        }
-    } catch (e) {
-        console.warn("Could not fetch profile", e);
-    }
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
 
-    return {
-      id: data.user.id,
-      email: data.user.email || '',
-      name: data.user.email?.split('@')[0] || 'User',
-      role: 'buyer'
-    };
+        if (error) {
+            if (isNetworkError(error)) {
+                 console.warn("Backend Unreachable.");
+                 throw new Error("Error de conexión.");
+            }
+            throw new Error(error.message);
+        }
+        
+        if (!data.user) throw new Error("No user returned");
+
+        // Admin Override for demo
+        if (email === 'admin@triproducts.com') {
+          return { id: data.user.id, email: email, name: 'Admin', role: 'admin' };
+        }
+
+        const { data: profile } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', data.user.id)
+            .single();
+            
+        return profile ? mapRowToUser(profile) : {
+          id: data.user.id,
+          email: data.user.email || '',
+          name: data.user.email?.split('@')[0] || 'User',
+          role: 'buyer'
+        };
+    } catch (e: any) {
+        throw e;
+    }
   },
 
   loginWithGoogle: async () => {
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: {
-        redirectTo: window.location.origin,
-        scopes: 'email profile', // Explicitly request profile data
-        queryParams: {
-          access_type: 'offline',
-          prompt: 'consent',
-        },
-      }
+      options: { redirectTo: window.location.origin }
     });
-
     if (error) throw new Error(error.message);
     return data;
   },
@@ -152,48 +139,29 @@ export const authService = {
   loginWithGithub: async () => {
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'github',
-      options: {
-        redirectTo: window.location.origin,
-        scopes: 'read:user user:email', // CRITICAL: Fix for "Error getting user profile" when email is private
-        queryParams: {
-            prompt: 'consent', // Force re-consent to ensure permissions are applied
-        }
-      }
+      options: { redirectTo: window.location.origin }
     });
-
     if (error) throw new Error(error.message);
     return data;
   },
 
   signUp: async (email: string, password: string, extraData: { name: string, whatsapp: string, phone: string }): Promise<User> => {
-    // 1. Register in Auth
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-    });
+    const { data, error } = await supabase.auth.signUp({ email, password });
 
     if (error) throw new Error(error.message);
     if (!data.user) throw new Error("Registration failed");
 
-    const finalRole: UserRole = email === 'admin@triproducts.com' ? 'admin' : 'buyer';
+    const finalRole: UserRole = 'buyer'; // Default to buyer
 
-    // 2. Update Profile with extra data using UPSERT to be safe
-    try {
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .upsert({
-          id: data.user.id,
-          email: email,
-          role: finalRole,
-          name: extraData.name,
-          whatsapp: extraData.whatsapp,
-          phone: extraData.phone
-        });
-        
-      if (profileError) console.error("Error creating profile:", profileError);
-    } catch (e) {
-      console.warn("Error inserting profile:", e);
-    }
+    // Upsert profile
+    await supabase.from('profiles').upsert({
+        id: data.user.id,
+        email: email,
+        role: finalRole,
+        name: extraData.name,
+        whatsapp: extraData.whatsapp,
+        phone: extraData.phone
+    });
 
     return {
       id: data.user.id,
@@ -213,18 +181,28 @@ export const authService = {
     }
 
     const payload: any = {
-      id: userId, // Required for upsert
       name: updates.name,
       whatsapp: updates.whatsapp,
       phone: updates.phone,
+      instagram: updates.instagram
     };
     if (avatarUrl) payload.avatar_url = avatarUrl;
-    if (updates.shopName) payload.shop_name = updates.shopName;
+    
+    // Logic: If downgrading to Buyer from Seller
+    if (updates.role === 'buyer') {
+        payload.role = 'buyer';
+        payload.shop_name = null;
+        payload.shop_description = null;
+        payload.shop_image_url = null;
+        
+        // CRITICAL: Delete products if shop is closed
+        await productService.deleteAllFromUser(userId);
+    }
 
-    // Use UPSERT instead of UPDATE to handle cases where profile might be missing
     const { data, error } = await supabase
       .from('profiles')
-      .upsert(payload) 
+      .update(payload) 
+      .eq('id', userId)
       .select()
       .single();
 
@@ -232,25 +210,27 @@ export const authService = {
     return mapRowToUser(data);
   },
   
-  createShop: async (userId: string, shopName: string, shopImageBase64?: string, shopDescription?: string): Promise<User> => {
+  createShop: async (userId: string, shopName: string, shopImageBase64?: string, shopDescription?: string, contact?: { whatsapp: string, phone: string, instagram: string }): Promise<User> => {
       let shopImageUrl = null;
       if (shopImageBase64 && shopImageBase64.startsWith('data:')) {
           shopImageUrl = await uploadImageToSupabase(shopImageBase64, 'avatars');
       } else if (shopImageBase64) {
-          // If it's already a URL (editing without changing image)
           shopImageUrl = shopImageBase64;
       }
 
       const updatePayload: any = { 
           shop_name: shopName,
           shop_description: shopDescription,
-          role: 'seller' // Upgrade role logic (safe to keep on updates)
+          role: 'seller',
+          // Ensure contact info is synced
+          whatsapp: contact?.whatsapp,
+          phone: contact?.phone,
+          instagram: contact?.instagram
       };
       if (shopImageUrl) {
           updatePayload.shop_image_url = shopImageUrl;
       }
 
-      // 1. Update Profile with shop name AND force role to seller if currently buyer
       const { data, error } = await supabase
         .from('profiles')
         .update(updatePayload)
@@ -270,78 +250,24 @@ export const authService = {
       const email = session.user.email || '';
       const userId = session.user.id;
 
-      // Special handling for hardcoded admin
       if (email === 'admin@triproducts.com') {
           return { id: userId, email: email, name: 'Admin', role: 'admin' };
       }
 
-      // Try to get existing profile
-      try {
-          const { data: profile } = await supabase
+      const { data: profile } = await supabase
           .from('profiles')
           .select('*')
           .eq('id', userId)
           .single();
           
-          // OAUTH SYNC: If profile exists but name/avatar missing, OR profile is missing completely
-          // We assume "User" or null name means we should try to sync from OAuth provider
-          const metadata = session.user.user_metadata || {};
-          const metaName = metadata.full_name || metadata.name || metadata.user_name;
-          const metaAvatar = metadata.avatar_url || metadata.picture;
-
-          const shouldUpsert = !profile || (metaName && (!profile.name || profile.name === 'Usuario'));
-
-          if (shouldUpsert) {
-              const newName = profile?.name && profile.name !== 'Usuario' ? profile.name : (metaName || email.split('@')[0]);
-              const newAvatar = profile?.avatar_url || metaAvatar || '';
-              const currentRole = profile?.role || 'buyer';
-
-              const upsertData = {
-                  id: userId,
-                  email: email,
-                  role: currentRole,
-                  name: newName,
-                  avatar_url: newAvatar,
-                  // Preserve existing fields if updating
-                  whatsapp: profile?.whatsapp || '',
-                  phone: profile?.phone || '',
-                  shop_name: profile?.shop_name,
-                  shop_image_url: profile?.shop_image_url,
-                  shop_description: profile?.shop_description
-              };
-
-              // Silent update to ensure profile exists and has Google/Github data
-              await supabase.from('profiles').upsert(upsertData);
-              
-              // Return combined object immediately
-              return {
-                  id: userId,
-                  email: email,
-                  role: currentRole as UserRole,
-                  name: newName,
-                  avatarUrl: newAvatar,
-                  whatsapp: upsertData.whatsapp,
-                  phone: upsertData.phone,
-                  shopName: upsertData.shop_name,
-                  shopImageUrl: upsertData.shop_image_url,
-                  shopDescription: upsertData.shop_description
-              };
-          }
-          
-          // If profile exists and is fine
-          if (profile) return mapRowToUser(profile);
-
-      } catch (e) {
-          console.warn("Could not fetch/sync profile session", e);
+      // Sync metadata if profile doesn't exist
+      if (!profile) {
+           const metadata = session.user.user_metadata || {};
+           const name = metadata.full_name || email.split('@')[0];
+           await supabase.from('profiles').upsert({ id: userId, email, name, role: 'buyer' });
+           return { id: userId, email, name, role: 'buyer' };
       }
-
-      // Fallback
-      return {
-        id: userId,
-        email: email,
-        name: email.split('@')[0],
-        role: 'buyer'
-      };
+      return mapRowToUser(profile);
     } catch (e) {
       return null;
     }
@@ -352,91 +278,20 @@ export const authService = {
   }
 };
 
-export const adminService = {
-  getAllUsers: async (): Promise<User[]> => {
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      if (!data) return [];
-
-      return data.map(mapRowToUser);
-    } catch (err) {
-      console.error("Error fetching users:", err);
-      throw err;
-    }
-  },
-
-  updateUserRole: async (userId: string, newRole: UserRole): Promise<void> => {
-    try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ role: newRole })
-        .eq('id', userId);
-
-      if (error) throw new Error(error.message);
-    } catch (e) {
-      console.error("Error updating user role:", e);
-      throw e;
-    }
-  },
-
-  updateUserProfile: async (userId: string, updates: Partial<User>): Promise<void> => {
-    try {
-        const { error } = await supabase
-        .from('profiles')
-        .update({
-            name: updates.name,
-            whatsapp: updates.whatsapp,
-            phone: updates.phone,
-            shop_name: updates.shopName
-        })
-        .eq('id', userId);
-
-        if (error) throw new Error(error.message);
-    } catch (e) {
-        console.error("Error updating user profile by admin:", e);
-        throw e;
-    }
-  },
-
-  deleteUser: async (userId: string): Promise<void> => {
-    try {
-      const { error } = await supabase
-        .from('profiles')
-        .delete()
-        .eq('id', userId);
-
-      if (error) throw new Error(error.message);
-    } catch (e) {
-      console.error("Error deleting user profile:", e);
-      throw e;
-    }
-  }
-};
-
 export const productService = {
   getAll: async (): Promise<Product[]> => {
     try {
+      // By default return everything, frontend filters. 
+      // Ideally backend filters status='published' but MyShop needs 'draft'.
       const { data, error } = await supabase
         .from('products')
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (error) {
-         if (error.code === '42P01') { 
-             console.warn("Products table missing (42P01). Returning empty list.");
-             return [];
-         }
-         throw error;
-      }
+      if (error) return MOCK_PRODUCTS;
       return data ? data.map(mapRowToProduct) : [];
     } catch (e) {
-      console.error("Error fetching products:", JSON.stringify(e));
-      return []; 
+      return MOCK_PRODUCTS; 
     }
   },
   
@@ -458,17 +313,14 @@ export const productService = {
 
   getFeaturedShops: async (): Promise<ShopSummary[]> => {
       try {
-        // 1. Fetch Sellers with Shops
-        const { data: sellers, error: sellerError } = await supabase
+        const { data: sellers } = await supabase
           .from('profiles')
           .select('id, shop_name, shop_image_url')
+          .eq('role', 'seller')
           .not('shop_name', 'is', null);
 
-        if (sellerError) throw sellerError;
-        if (!sellers || sellers.length === 0) return [];
+        if (!sellers) return [];
 
-        // 2. Fetch Product Counts (Simple aggregation)
-        // We get all published products to count them. In production, use RPC or .count() per seller.
         const { data: products } = await supabase
           .from('products')
           .select('user_id')
@@ -479,7 +331,6 @@ export const productService = {
             productMap[p.user_id] = (productMap[p.user_id] || 0) + 1;
         });
 
-        // 3. Map to ShopSummary
         const shops: ShopSummary[] = sellers
             .map(s => ({
                 id: s.id,
@@ -487,20 +338,32 @@ export const productService = {
                 shopImageUrl: s.shop_image_url,
                 productCount: productMap[s.id] || 0
             }))
-            .filter(s => s.productCount > 0) // Only shops with products
-            .sort((a, b) => b.productCount - a.productCount); // Most active first
+            .filter(s => s.productCount > 0)
+            .sort((a, b) => b.productCount - a.productCount);
 
         return shops;
 
       } catch (e) {
-          console.error("Error fetching shops", e);
           return [];
       }
   },
 
+  getShopDetails: async (userId: string): Promise<User | null> => {
+      const { data } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+        
+      if (!data) return null;
+      return mapRowToUser(data);
+  },
+
   create: async (productData: Omit<Product, 'id' | 'createdAt' | 'userId'>): Promise<Product> => {
     const user = await authService.getSessionUser();
-    if (!user) throw new Error("Debes iniciar sesión para publicar.");
+    if (!user) throw new Error("Debes iniciar sesión.");
+    if (user.role === 'admin') throw new Error("Administradores no pueden vender.");
+    if (user.role === 'buyer') throw new Error("Debes abrir una tienda para vender.");
 
     const finalImageUrls: string[] = [];
     for (const img of productData.imageUrls) {
@@ -574,72 +437,46 @@ export const productService = {
   },
 
   delete: async (id: string) => {
-    const { data, error } = await supabase
-      .from('products')
-      .delete()
-      .eq('id', id)
-      .select();
-
+    const { error } = await supabase.from('products').delete().eq('id', id);
     if (error) throw new Error(error.message);
-    
-    if (!data || data.length === 0) {
-        const { count } = await supabase.from('products').select('*', { count: 'exact', head: true }).eq('id', id);
-        if (count && count > 0) {
-            throw new Error("No tienes permiso para eliminar este producto. (Bloqueo RLS)");
-        }
-    }
   },
 
   deleteMany: async (ids: string[]) => {
-    try {
-      const { data, error } = await supabase
-        .from('products')
-        .delete()
-        .in('id', ids)
-        .select();
-        
+      const { error } = await supabase.from('products').delete().in('id', ids);
       if (error) throw new Error(error.message);
+  },
 
-      if (!data || data.length === 0) {
-         const { count } = await supabase.from('products').select('*', { count: 'exact', head: true }).in('id', ids);
-         if (count && count > 0) {
-            throw new Error("No tienes permiso para eliminar estos productos. (Bloqueo RLS)");
-         }
-      }
-    } catch (e) {
-      console.error("Error bulk deleting:", e);
-      throw e;
-    }
+  deleteAllFromUser: async (userId: string) => {
+      const { error } = await supabase.from('products').delete().eq('user_id', userId);
+      if (error) console.error("Error deleting user products", error);
+  },
+
+  updateStatusMany: async (ids: string[], status: 'draft' | 'published') => {
+      const { error } = await supabase.from('products').update({ status }).in('id', ids);
+      if (error) throw new Error(error.message);
   }
 };
 
 export const configService = {
   getSettings: async (): Promise<SiteSettings> => {
-    const { data, error } = await supabase
-      .from('site_settings')
-      .select('*')
-      .eq('id', 1)
-      .single();
-    
-    if (error) {
-        if (error.code === '42P01' || error.code === 'PGRST116') {
-             return DEFAULT_SETTINGS;
-        }
-        console.error("Error fetching settings", JSON.stringify(error));
+    try {
+        const { data } = await supabase.from('site_settings').select('*').eq('id', 1).single();
+        if (!data) return DEFAULT_SETTINGS;
+        
+        return {
+        siteName: data.site_name || DEFAULT_SETTINGS.siteName,
+        siteDescription: data.site_description || DEFAULT_SETTINGS.siteDescription,
+        logoUrl: data.logo_url,
+        defaultLanguage: data.default_language || 'es',
+        aiProvider: data.ai_provider || 'gemini',
+        geminiApiKey: data.gemini_api_key,
+        geminiModel: data.gemini_model,
+        openaiApiKey: data.openai_api_key,
+        openaiModel: data.openai_model
+        };
+    } catch (e) {
         return DEFAULT_SETTINGS;
     }
-    
-    return {
-      siteName: data?.site_name || DEFAULT_SETTINGS.siteName,
-      siteDescription: data?.site_description || DEFAULT_SETTINGS.siteDescription,
-      logoUrl: data?.logo_url,
-      defaultLanguage: data?.default_language || 'es',
-      aiProvider: (data?.ai_provider as AIProvider) || 'gemini',
-      geminiApiKey: data?.gemini_api_key || '',
-      geminiModel: data?.gemini_model || 'gemini-2.5-flash',
-      openaiApiKey: data?.openai_api_key || '',
-      openaiModel: data?.openai_model || 'gpt-4o'
-    };
   },
 
   updateSettings: async (settings: SiteSettings, logoBase64?: string): Promise<void> => {

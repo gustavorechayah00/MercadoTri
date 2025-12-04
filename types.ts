@@ -57,10 +57,11 @@ export interface User {
   name: string;
   whatsapp?: string;
   phone?: string;
+  instagram?: string; // New field
   avatarUrl?: string;
   shopName?: string;
   shopImageUrl?: string; 
-  shopDescription?: string; // New field for Shop Bio
+  shopDescription?: string;
 }
 
 export interface ShopSummary {
