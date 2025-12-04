@@ -16,7 +16,7 @@ Tu tarea es doble:
    - USA LA HERRAMIENTA DE BÚSQUEDA (Google Search) para encontrar precios de referencia de ESTE producto usado en ARGENTINA (MercadoLibre.com.ar, Facebook Marketplace Argentina, BuyTri, tiendas locales).
    - Determina un rango de precio (minPrice, maxPrice) y un precio sugerido (suggestedPrice).
    - Moneda: Por defecto ARS (Pesos Argentinos). Solo usa USD si el producto es de gama muy alta y el mercado local lo cotiza así.
-   - Genera una "priceExplanation" breve justificando el precio basado en los resultados de búsqueda encontrados.
+   - Genera una "priceExplanation" MUY BREVE Y DIRECTA (máximo 2 oraciones) justificando el precio. No des rodeos.
    - Genera título y descripción atractiva en ESPAÑOL.
 `;
 

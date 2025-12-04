@@ -256,7 +256,7 @@ export const TriBot: React.FC<TriBotProps> = ({ currentContext, onNavigateProduc
           {/* Input Area */}
           <div className="p-3 bg-white border-t border-gray-100">
              <form onSubmit={handleSendText} className="flex items-end gap-2 relative">
-                <div className="flex-1 bg-white rounded-2xl flex items-center px-4 py-2 border border-gray-300 focus-within:border-tri-blue transition-colors shadow-sm">
+                <div className="flex-1 bg-gray-100 rounded-2xl flex items-center px-4 py-2 border border-transparent focus-within:border-tri-blue focus-within:bg-white transition-colors">
                     <input 
                         type="text" 
                         className="flex-1 bg-transparent border-none outline-none text-sm text-gray-800 placeholder-gray-400 max-h-24 py-1"

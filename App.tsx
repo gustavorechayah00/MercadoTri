@@ -107,6 +107,8 @@ const translations = {
     applyPrice: 'Aplicar Precio',
     analysisSource: 'Fuentes encontradas:',
     noAnalysis: 'No se encontraron datos de mercado suficientes.',
+    listenAudio: 'Escuchar Explicación',
+    stopAudio: 'Detener Audio',
 
     // Categories & Conditions (UI Display)
     catCycling: 'Ciclismo',
@@ -164,9 +166,9 @@ const translations = {
 
     // Config
     configTitle: 'Configuración del Sitio',
-    siteNameLabel: 'Nombre del Sitio',
-    siteDescLabel: 'Descripción del Sitio',
-    logoUrlLabel: 'URL del Logo (o subir)',
+    siteNameLabel: 'Site Name',
+    siteDescLabel: 'Site Description',
+    logoUrlLabel: 'Logo URL (or upload)',
     aiConfigTitle: 'Configuración de Inteligencia Artificial',
     aiProviderLabel: 'Proveedor de IA',
     apiKeyLabel: 'API Key',
@@ -271,6 +273,8 @@ const translations = {
     applyPrice: 'Apply Price',
     analysisSource: 'Sources found:',
     noAnalysis: 'No sufficient market data found.',
+    listenAudio: 'Listen Explanation',
+    stopAudio: 'Stop Audio',
 
     // Categories & Conditions (UI Display)
     catCycling: 'Cycling',
@@ -320,11 +324,11 @@ const translations = {
     productsCount: 'products',
 
     // Admin / Actions
-    editAction: 'Editar',
-    deleteAction: 'Eliminar',
-    confirmDelete: '¿Estás seguro que deseas eliminar este producto? Esta acción no se puede deshacer.',
-    confirmBulkDelete: '¿Estás seguro que deseas eliminar los productos seleccionados?',
-    deletedSuccess: 'Producto eliminado correctamente.',
+    editAction: 'Edit',
+    deleteAction: 'Delete',
+    confirmDelete: 'Are you sure you want to delete this product? This action cannot be undone.',
+    confirmBulkDelete: 'Are you sure you want to delete the selected products?',
+    deletedSuccess: 'Product deleted successfully.',
 
     // Config
     configTitle: 'Site Configuration',
@@ -757,6 +761,40 @@ const UploadView = ({ onAnalysisComplete, onCancel, t }: { onAnalysisComplete: (
   );
 };
 
+// --- CHART COMPONENT ---
+const PriceRangeVisualizer = ({ min, max, current }: { min: number, max: number, current: number }) => {
+    // Avoid division by zero
+    if (min >= max) return null;
+    
+    // Calculate percentage position
+    let percent = ((current - min) / (max - min)) * 100;
+    // Clamp
+    percent = Math.max(0, Math.min(100, percent));
+
+    return (
+        <div className="mt-4 mb-2">
+            <div className="flex justify-between text-[10px] font-bold text-gray-400 uppercase mb-1">
+                <span>Min</span>
+                <span>Max</span>
+            </div>
+            <div className="relative h-4 w-full bg-gray-100 rounded-full overflow-visible">
+                {/* Background Track */}
+                <div className="absolute inset-0 rounded-full bg-gray-200"></div>
+                {/* Colored Gradient Track */}
+                <div className="absolute inset-0 rounded-full bg-gradient-to-r from-tri-green via-tri-blue to-tri-orange opacity-30"></div>
+                
+                {/* Marker */}
+                <div 
+                    className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-tri-orange rounded-full shadow-md border-2 border-white transform -translate-x-1/2 z-10 flex items-center justify-center transition-all duration-500"
+                    style={{ left: `${percent}%` }}
+                >
+                    <div className="w-1 h-1 bg-white rounded-full"></div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 const EditView = ({ initialData, images: initialImages, onSave, onCancel, t, isEditing, onDelete }: any) => {
   const [formData, setFormData] = useState({
     title: initialData.title,
@@ -771,6 +809,7 @@ const EditView = ({ initialData, images: initialImages, onSave, onCancel, t, isE
   });
   const [localImages, setLocalImages] = useState<string[]>(initialImages);
   const [saving, setSaving] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
   const addImgInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { setLocalImages(initialImages); }, [initialImages]);
@@ -810,6 +849,45 @@ const EditView = ({ initialData, images: initialImages, onSave, onCancel, t, isE
     } catch (e) { console.error(e); alert("Error guardando producto."); } 
     finally { setSaving(false); }
   };
+  
+  // TTS Logic
+  const toggleSpeech = () => {
+    if (isSpeaking) {
+        window.speechSynthesis.cancel();
+        setIsSpeaking(false);
+        return;
+    }
+
+    if (!initialData.priceExplanation) return;
+
+    // Use Web Speech API
+    window.speechSynthesis.cancel(); // Stop any previous
+    const utterance = new SpeechSynthesisUtterance(initialData.priceExplanation);
+    
+    // Attempt to find an Argentine or Spanish voice
+    const voices = window.speechSynthesis.getVoices();
+    // Prioritize es-AR, then any Spanish female if possible (simple heuristic), then any Spanish
+    const targetVoice = 
+        voices.find(v => v.lang === 'es-AR') || 
+        voices.find(v => v.lang.startsWith('es') && (v.name.includes('Female') || v.name.includes('Helena') || v.name.includes('Sabina'))) ||
+        voices.find(v => v.lang.startsWith('es'));
+        
+    if (targetVoice) {
+        utterance.voice = targetVoice;
+    }
+    utterance.lang = 'es-AR'; // Hint language
+    
+    utterance.onend = () => setIsSpeaking(false);
+    utterance.onerror = () => setIsSpeaking(false);
+    
+    setIsSpeaking(true);
+    window.speechSynthesis.speak(utterance);
+  };
+  
+  // Ensure voices are loaded (browsers load async)
+  useEffect(() => {
+     window.speechSynthesis.getVoices();
+  }, []);
 
   // Helper to safely display price
   const displayCurrency = (amount: number, curr: string) => {
@@ -939,9 +1017,28 @@ const EditView = ({ initialData, images: initialImages, onSave, onCancel, t, isE
                       )}
                   </div>
                   
-                  <p className="text-xs text-gray-600 leading-relaxed mb-3">
-                      "{initialData.priceExplanation}"
-                  </p>
+                  {/* VISUAL CHART */}
+                  {(initialData.minPrice && initialData.maxPrice && initialData.suggestedPrice) && (
+                      <PriceRangeVisualizer 
+                          min={initialData.minPrice} 
+                          max={initialData.maxPrice} 
+                          current={formData.price} 
+                      />
+                  )}
+                  
+                  <div className="flex items-start gap-3 mt-3">
+                      <p className="text-xs text-gray-600 leading-relaxed italic flex-1">
+                          "{initialData.priceExplanation}"
+                      </p>
+                      <button 
+                        type="button"
+                        onClick={toggleSpeech}
+                        className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center transition shadow-sm ${isSpeaking ? 'bg-red-500 text-white animate-pulse' : 'bg-white text-gray-400 hover:text-tri-blue border border-gray-200'}`}
+                        title={isSpeaking ? t.stopAudio : t.listenAudio}
+                      >
+                         <i className={`fa-solid ${isSpeaking ? 'fa-stop' : 'fa-volume-high'}`}></i>
+                      </button>
+                  </div>
 
                   {/* Sources / Grounding Links */}
                   {initialData.sourceLinks && initialData.sourceLinks.length > 0 && (
@@ -1127,7 +1224,7 @@ const App: React.FC = () => {
                         <input 
                             type="text" 
                             placeholder={t.searchPlaceholder} 
-                            className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-tri-orange bg-white"
+                            className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-tri-orange"
                             value={searchTerm}
                             onChange={e => setSearchTerm(e.target.value)}
                         />
