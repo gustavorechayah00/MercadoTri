@@ -123,42 +123,54 @@ export const analyzeProductImage = async (base64Image: string): Promise<AIAnalys
 
         const ai = new GoogleGenAI({ apiKey });
         
+        // NOTE: When using 'tools' (googleSearch), we CANNOT force 'responseMimeType: application/json'
+        // or a schema in the config without triggering an INVALID_ARGUMENT error.
+        // Instead, we prompt the model to return JSON explicitly and parse the text response.
         const response = await ai.models.generateContent({
           model: settings.geminiModel || "gemini-2.5-flash",
           contents: {
             parts: [
               { inlineData: { mimeType: "image/jpeg", data: cleanBase64 } },
-              { text: "Analiza la imagen. Busca precios actuales en Argentina. Devuelve JSON." }
+              { text: `
+                Analiza la imagen y busca precios en Argentina.
+                Devuelve EXCLUSIVAMENTE un objeto JSON válido con la siguiente estructura (sin markdown, solo el JSON):
+                {
+                  "isSafe": boolean,
+                  "safetyReason": string (opcional),
+                  "title": string,
+                  "category": "Cycling" | "Running" | "Swimming" | "Triathlon" | "Other",
+                  "brand": string,
+                  "condition": "New" | "Used - Like New" | "Used - Good" | "Used - Fair",
+                  "description": string,
+                  "suggestedPrice": number,
+                  "minPrice": number,
+                  "maxPrice": number,
+                  "priceExplanation": string,
+                  "currency": "ARS" | "USD",
+                  "tags": string[],
+                  "confidenceScore": number
+                }
+              ` }
             ]
           },
           config: {
             systemInstruction: SYSTEM_INSTRUCTION,
             tools: [{ googleSearch: {} }], // Enable Search Grounding
-            responseMimeType: "application/json",
-            responseSchema: {
-              type: Type.OBJECT,
-              properties: {
-                isSafe: { type: Type.BOOLEAN },
-                safetyReason: { type: Type.STRING },
-                title: { type: Type.STRING },
-                category: { type: Type.STRING, enum: ["Cycling", "Running", "Swimming", "Triathlon", "Other"] },
-                brand: { type: Type.STRING },
-                condition: { type: Type.STRING, enum: ["New", "Used - Like New", "Used - Good", "Used - Fair"] },
-                description: { type: Type.STRING },
-                suggestedPrice: { type: Type.NUMBER },
-                minPrice: { type: Type.NUMBER },
-                maxPrice: { type: Type.NUMBER },
-                priceExplanation: { type: Type.STRING },
-                currency: { type: Type.STRING, enum: ["ARS", "USD"] },
-                tags: { type: Type.ARRAY, items: { type: Type.STRING } },
-                confidenceScore: { type: Type.NUMBER }
-              },
-              required: ["isSafe", "title", "category", "brand", "condition", "description", "suggestedPrice"]
-            }
           }
         });
 
-        const result = JSON.parse(response.text || "{}");
+        // 1. Clean the response (remove markdown code blocks if present)
+        let jsonStr = response.text || "{}";
+        jsonStr = jsonStr.replace(/```json/g, '').replace(/```/g, '').trim();
+
+        // 2. Parse JSON
+        let result;
+        try {
+            result = JSON.parse(jsonStr);
+        } catch (e) {
+            console.error("Failed to parse Gemini JSON:", jsonStr);
+            throw new Error("La IA no devolvió un formato válido. Intenta con otra foto.");
+        }
         
         if (result.isSafe === false) {
             throw new Error(`Imagen rechazada por moderación: ${result.safetyReason || 'Contenido inapropiado detectado.'}`);

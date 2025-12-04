@@ -35,7 +35,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onClick, show
   return (
     <div 
       onClick={onClick}
-      className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden transition-all duration-300 ease-out cursor-pointer flex flex-col h-full group hover:-translate-y-1 hover:shadow-xl hover:border-tri-orange/40"
+      className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden transition-all duration-300 ease-out cursor-pointer flex flex-col h-full group hover:-translate-y-2 hover:shadow-2xl hover:border-tri-orange/50 hover:ring-2 hover:ring-tri-orange/80"
     >
       <div className="relative aspect-square w-full bg-gray-100 overflow-hidden">
         <img 
