@@ -35,13 +35,13 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onClick, show
   return (
     <div 
       onClick={onClick}
-      className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition cursor-pointer flex flex-col h-full group"
+      className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden transition-all duration-300 ease-out cursor-pointer flex flex-col h-full group hover:-translate-y-1 hover:shadow-xl hover:border-tri-orange/40"
     >
       <div className="relative aspect-square w-full bg-gray-100 overflow-hidden">
         <img 
           src={images[currentImageIndex]} 
           alt={product.title} 
-          className="w-full h-full object-cover object-center transition-opacity duration-300"
+          className="w-full h-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
         />
         
         {/* Navigation Arrows (Only if > 1 image) */}
@@ -86,9 +86,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onClick, show
         )}
       </div>
 
-      <div className="p-3 flex flex-col flex-grow">
+      <div className="p-3 flex flex-col flex-grow relative z-20 bg-white">
         <div className="mb-1">
-          <h3 className="font-medium text-gray-900 line-clamp-2 text-sm leading-tight h-9">{product.title}</h3>
+          <h3 className="font-medium text-gray-900 line-clamp-2 text-sm leading-tight h-9 group-hover:text-tri-orange transition-colors">{product.title}</h3>
         </div>
         
         <div className="flex items-center text-[10px] text-gray-500 mb-2 space-x-1">
