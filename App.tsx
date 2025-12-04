@@ -320,11 +320,11 @@ const translations = {
     productsCount: 'products',
 
     // Admin / Actions
-    editAction: 'Edit',
-    deleteAction: 'Delete',
-    confirmDelete: 'Are you sure you want to delete this product? This action cannot be undone.',
-    confirmBulkDelete: 'Are you sure you want to delete the selected products?',
-    deletedSuccess: 'Product deleted successfully.',
+    editAction: 'Editar',
+    deleteAction: 'Eliminar',
+    confirmDelete: '¿Estás seguro que deseas eliminar este producto? Esta acción no se puede deshacer.',
+    confirmBulkDelete: '¿Estás seguro que deseas eliminar los productos seleccionados?',
+    deletedSuccess: 'Producto eliminado correctamente.',
 
     // Config
     configTitle: 'Site Configuration',
@@ -334,7 +334,7 @@ const translations = {
     aiConfigTitle: 'AI Configuration',
     aiProviderLabel: 'AI Provider',
     apiKeyLabel: 'API Key',
-    modelLabel: 'Model',
+    modelLabel: 'Modelo',
     saveConfig: 'Save Configuration'
   }
 };
@@ -880,7 +880,7 @@ const EditView = ({ initialData, images: initialImages, onSave, onCancel, t, isE
               <label className="block text-xs font-bold text-gray-500 uppercase mb-1">{t.priceLabel}</label>
               <div className="flex rounded-lg shadow-sm">
                 <select 
-                  className="bg-gray-100 border border-r-0 border-gray-300 text-gray-900 text-sm rounded-l-lg focus:ring-tri-orange focus:border-tri-orange block p-2.5 outline-none"
+                  className="bg-white border border-r-0 border-gray-300 text-gray-900 text-sm rounded-l-lg focus:ring-tri-orange focus:border-tri-orange block p-2.5 outline-none"
                   value={formData.currency}
                   onChange={e => setFormData({...formData, currency: e.target.value})}
                 >
@@ -1127,7 +1127,7 @@ const App: React.FC = () => {
                         <input 
                             type="text" 
                             placeholder={t.searchPlaceholder} 
-                            className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-tri-orange"
+                            className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-tri-orange bg-white"
                             value={searchTerm}
                             onChange={e => setSearchTerm(e.target.value)}
                         />
