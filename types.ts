@@ -37,6 +37,10 @@ export interface AIAnalysisResult {
   condition: Condition;
   description: string;
   suggestedPrice: number;
+  minPrice?: number;     // New: Market Low
+  maxPrice?: number;     // New: Market High
+  priceExplanation?: string; // New: Reason for price
+  sourceLinks?: { title: string, uri: string }[]; // New: Grounding sources
   tags: string[];
   confidenceScore: number;
   isSafe: boolean;

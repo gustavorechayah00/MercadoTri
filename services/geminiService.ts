@@ -5,16 +5,19 @@ import { configService, productService } from "./mockBackend";
 
 // --- PROMPTS ---
 const SYSTEM_INSTRUCTION = `
-Eres un experto tasador de equipamiento deportivo y moderador de contenido.
-Tu tarea principal es doble:
-1. MODERACIÓN ÉTICA (PRIORIDAD MÁXIMA):
-   - Analiza la imagen en busca de contenido ofensivo, sexualmente explícito, pornografía, violencia, símbolos de odio, discriminación política, religiosa o racial.
-   - Si detectas CUALQUIERA de estos elementos, establece "isSafe" en false y explica la razón en "safetyReason".
-   - Si la imagen no tiene relación con productos deportivos (ej: una selfie, un paisaje sin contexto, comida), también puedes marcarla como insegura o irrelevante.
+Eres un experto tasador de equipamiento deportivo de triatlón (Ciclismo, Running, Natación) en ARGENTINA.
+Tu tarea es doble:
 
-2. ANÁLISIS DE PRODUCTO:
-   - Solo si la imagen es segura, extrae los datos del producto deportivo.
-   - Genera título y descripción en ESPAÑOL.
+1. MODERACIÓN:
+   - Analiza la imagen. Si contiene desnudos, violencia, odio o NO es un producto físico vendible, marca isSafe: false.
+
+2. ANÁLISIS DE PRODUCTO Y MERCADO (Deep Search):
+   - Identifica con precisión: Marca, Modelo, Año aproximado y componentes visibles.
+   - USA LA HERRAMIENTA DE BÚSQUEDA (Google Search) para encontrar precios de referencia de ESTE producto usado en ARGENTINA (MercadoLibre.com.ar, Facebook Marketplace Argentina, BuyTri, tiendas locales).
+   - Determina un rango de precio (minPrice, maxPrice) y un precio sugerido (suggestedPrice).
+   - Moneda: Por defecto ARS (Pesos Argentinos). Solo usa USD si el producto es de gama muy alta y el mercado local lo cotiza así.
+   - Genera una "priceExplanation" breve justificando el precio basado en los resultados de búsqueda encontrados.
+   - Genera título y descripción atractiva en ESPAÑOL.
 `;
 
 const BOT_SYSTEM_INSTRUCTION = `
@@ -76,7 +79,7 @@ export const analyzeProductImage = async (base64Image: string): Promise<AIAnalys
 
   try {
     if (provider === 'openai') {
-        // --- OPENAI IMPLEMENTATION ---
+        // --- OPENAI IMPLEMENTATION (Sin búsqueda web en vivo por esta API standard) ---
         if (!settings.openaiApiKey) throw new Error("API Key de OpenAI no configurada.");
         
         const messages = [
@@ -84,7 +87,7 @@ export const analyzeProductImage = async (base64Image: string): Promise<AIAnalys
             { 
                 role: "user", 
                 content: [
-                    { type: "text", text: "Analiza esta imagen. Devuelve JSON con: isSafe, safetyReason, title, category, brand, condition, description, suggestedPrice, tags." },
+                    { type: "text", text: "Analiza esta imagen. Devuelve JSON con: isSafe, safetyReason, title, category, brand, condition, description, suggestedPrice, minPrice, maxPrice, priceExplanation, currency, tags." },
                     { type: "image_url", image_url: { url: `data:image/jpeg;base64,${cleanBase64}` } }
                 ] 
             }
@@ -104,13 +107,17 @@ export const analyzeProductImage = async (base64Image: string): Promise<AIAnalys
             condition: (result.condition as Condition) || Condition.USED_GOOD,
             description: result.description || "Sin descripción.",
             suggestedPrice: result.suggestedPrice || 0,
+            minPrice: result.minPrice || 0,
+            maxPrice: result.maxPrice || 0,
+            priceExplanation: result.priceExplanation || "Estimación basada en conocimiento general.",
+            currency: result.currency || 'ARS',
             tags: result.tags || [],
             confidenceScore: 0.9,
             isSafe: true
         };
 
     } else {
-        // --- GEMINI IMPLEMENTATION (Default) ---
+        // --- GEMINI IMPLEMENTATION (With Google Search Grounding) ---
         const apiKey = settings.geminiApiKey || process.env.API_KEY; 
         if (!apiKey) throw new Error("API Key de Gemini no configurada.");
 
@@ -121,11 +128,12 @@ export const analyzeProductImage = async (base64Image: string): Promise<AIAnalys
           contents: {
             parts: [
               { inlineData: { mimeType: "image/jpeg", data: cleanBase64 } },
-              { text: "Analiza esta imagen. Verifica seguridad ética y moral primero. Si es segura, identifica el producto deportivo." }
+              { text: "Analiza la imagen. Busca precios actuales en Argentina. Devuelve JSON." }
             ]
           },
           config: {
             systemInstruction: SYSTEM_INSTRUCTION,
+            tools: [{ googleSearch: {} }], // Enable Search Grounding
             responseMimeType: "application/json",
             responseSchema: {
               type: Type.OBJECT,
@@ -138,10 +146,14 @@ export const analyzeProductImage = async (base64Image: string): Promise<AIAnalys
                 condition: { type: Type.STRING, enum: ["New", "Used - Like New", "Used - Good", "Used - Fair"] },
                 description: { type: Type.STRING },
                 suggestedPrice: { type: Type.NUMBER },
+                minPrice: { type: Type.NUMBER },
+                maxPrice: { type: Type.NUMBER },
+                priceExplanation: { type: Type.STRING },
+                currency: { type: Type.STRING, enum: ["ARS", "USD"] },
                 tags: { type: Type.ARRAY, items: { type: Type.STRING } },
                 confidenceScore: { type: Type.NUMBER }
               },
-              required: ["isSafe", "title", "category", "brand", "condition", "description", "suggestedPrice", "tags"]
+              required: ["isSafe", "title", "category", "brand", "condition", "description", "suggestedPrice"]
             }
           }
         });
@@ -152,6 +164,17 @@ export const analyzeProductImage = async (base64Image: string): Promise<AIAnalys
             throw new Error(`Imagen rechazada por moderación: ${result.safetyReason || 'Contenido inapropiado detectado.'}`);
         }
 
+        // Extract Search Sources from Grounding Metadata
+        const sourceLinks: { title: string, uri: string }[] = [];
+        const chunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks;
+        if (chunks) {
+            chunks.forEach((chunk: any) => {
+                if (chunk.web?.uri) {
+                    sourceLinks.push({ title: chunk.web.title || 'Fuente Web', uri: chunk.web.uri });
+                }
+            });
+        }
+
         return {
           title: result.title || "Artículo Desconocido",
           category: (result.category as Category) || Category.OTHER,
@@ -159,6 +182,11 @@ export const analyzeProductImage = async (base64Image: string): Promise<AIAnalys
           condition: (result.condition as Condition) || Condition.USED_GOOD,
           description: result.description || "Sin descripción.",
           suggestedPrice: result.suggestedPrice || 0,
+          minPrice: result.minPrice,
+          maxPrice: result.maxPrice,
+          priceExplanation: result.priceExplanation,
+          currency: result.currency || 'ARS',
+          sourceLinks: sourceLinks,
           tags: result.tags || [],
           confidenceScore: result.confidenceScore || 0.5,
           isSafe: true
